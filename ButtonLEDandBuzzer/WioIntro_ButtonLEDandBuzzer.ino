@@ -17,12 +17,11 @@ typedef struct Button {
   int lastRead;                   // Last pre-debounce button reading
   int stable;                     // Debounced button state
   unsigned long lastDebounceTime; // lastRaw's timestamp
-  int count;
 } Button;
 
-Button res = {WIO_KEY_C, HIGH, HIGH, HIGH, 0, 0};
-Button fun = {WIO_KEY_A, HIGH, HIGH, HIGH, 0, 0};
-Button fib = {WIO_KEY_B, HIGH, HIGH, HIGH, 0, 0};
+Button res = {WIO_KEY_C, HIGH, HIGH, HIGH, 0};
+Button fun = {WIO_KEY_A, HIGH, HIGH, HIGH, 0};
+Button fib = {WIO_KEY_B, HIGH, HIGH, HIGH, 0};
 
 int ledState = LOW;
 
@@ -43,7 +42,7 @@ void setup() {
 }
 
 void loop() {
-  if (button_debounce(&res)) ledState = !ledState;
+  if (button_debounce(&res)) do_beeps(3);
   if (button_debounce(&fun)) ledState = !ledState;
   if (button_debounce(&fib)) ledState = !ledState;
 
@@ -74,30 +73,17 @@ bool button_debounce(Button* b) {
   return pressed;
 }
 
-
-
-
-
-
-
-
-
-void reset_counts()
-{
-  for (int i = 0; i < 3; i++)
+void do_beeps(int ct) {
+  for (int i = 0; i < ct; i++)
   {
     analogWrite(WIO_BUZZER, 128);
     delay(250);
     analogWrite(WIO_BUZZER, 0);
     delay(250);
   }
-
-  fun.count = 0;
-  fib.count = 0;
 }
 
-void do_blinks(int ct)
-{
+void do_blinks(int ct) {
   for (int i = 0; i < ct; i++)
   {
     digitalWrite(LED_BUILTIN, HIGH);
