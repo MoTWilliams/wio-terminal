@@ -4,32 +4,64 @@
   Lab 2: Wio Intro
   Feb 19, 2026
 */
-#include <stdbool.h>
+#include <stdbool.h>              // For using bool type in C
 
 #define LED LED_BUILTIN
 #define BUZZER WIO_BUZZER
 
 #define DEBOUNCE_DELAY 50
+#define ODD0 1
+#define ODD1 3
+#define FIB0 1
+#define FIB1 1
 
 typedef struct Button {
-  int pin;
-  int read;                       // Current pre-debounce button reading
-  int lastRead;                   // Last pre-debounce button reading
-  int stable;                     // Debounced button state
-  unsigned long lastDebounceTime; // lastRaw's timestamp
+  int pin;                        // Physical button
+  int read;                       // Current raw button reading
+  int lastRead;                   // Previous raw button reading
+  int stable;                     // Most recent stable button state
+  unsigned long lastDebounceTime; // Timestamp of last raw state change
 } Button;
 
-Button res = {WIO_KEY_C, HIGH, HIGH, HIGH, 0};
-Button fun = {WIO_KEY_A, HIGH, HIGH, HIGH, 0};
-Button fib = {WIO_KEY_B, HIGH, HIGH, HIGH, 0};
+// HIGH = button in released state
+Button odd = { WIO_KEY_A, HIGH, HIGH, HIGH, 0 };  // Right
+Button fib = { WIO_KEY_B, HIGH, HIGH, HIGH, 0 };  // Middle
+Button res = { WIO_KEY_C, HIGH, HIGH, HIGH, 0 };  // Left
 
-int ledState = LOW;
+typedef struct Seq Seq;
+typedef int (*func_t)(Seq* s);    // Used instead of switch or if-statement to
+                                  // select the corresponding recurrence
+                                  // relation in get_next()
 
+struct Seq {
+  char* name;
+  int i, a0, a1;  // Current index, first term value, second term value
+  int prev, curr;
+  func_t step;    // Pointer to the corresponding recurrence relation
+};
+
+// Recurrence relations
+int odd_function(Seq* s) { return 2 * s->curr - s->prev; }
+int fib_function(Seq* s) { return s->curr + s->prev; }
+
+// Reset counts for one sequence
+void reset(Seq* s) {
+  s->i = 0;
+  s->prev = s->a0;
+  s->curr = s->a1;
+}
+
+// Important values for each sequence
+Seq oddVals = { "odd", 0, ODD0, ODD1, ODD0, ODD1, odd_function };
+Seq fibVals = { "fibonacci", 0, FIB0, FIB1, FIB0, FIB1, fib_function };
+
+
+// Run once
 void setup() {
   // initialize top buttons as input
   Serial.begin(115200);
   pinMode(res.pin, INPUT_PULLUP);
-  pinMode(fun.pin, INPUT_PULLUP);
+  pinMode(odd.pin, INPUT_PULLUP);
   pinMode(fib.pin, INPUT_PULLUP);
 
   // Initialize buzzer and LED as output
@@ -41,16 +73,41 @@ void setup() {
   analogWrite(BUZZER, 0);
 }
 
+// Runs thousands of times a second, unless delayed
 void loop() {
-  if (button_debounce(&res)) do_beeps(3);
-  if (button_debounce(&fun)) ledState = !ledState;
-  if (button_debounce(&fib)) ledState = !ledState;
+  int blinks = 0;
 
-  digitalWrite(LED, ledState);
+  // Button A
+  if (button_pressed(&odd))
+  {
+    // Beep once to indicate button pressed, then get the next odd value
+    beep();
+    blinks = get_next(&oddVals);
+  }
+
+  // Button B
+  else if (button_pressed(&fib))
+  {
+    // Beep once to indicate button pressed, then get next fibonacci value
+    beep();
+    blinks = get_next(&fibVals);
+  }
+
+  // Button C
+  else if (button_pressed(&res))
+  {
+    // Just reset all values
+    reset_all();
+  }
+
+  // Do blinks
+  blink(blinks);
 }
 
+
+// Stop switch bouncing
 // Based on: https://docs.arduino.cc/built-in-examples/digital/Debounce/
-bool button_debounce(Button* b) {
+bool button_pressed(Button* b) {
   bool pressed = false;
   b->read = digitalRead(b->pin);
 
@@ -73,22 +130,58 @@ bool button_debounce(Button* b) {
   return pressed;
 }
 
-void do_beeps(int ct) {
-  for (int i = 0; i < ct; i++)
-  {
-    analogWrite(WIO_BUZZER, 128);
-    delay(250);
-    analogWrite(WIO_BUZZER, 0);
-    delay(250);
-  }
+
+// Button actions
+void reset_all() {
+  reset(&oddVals);
+  reset(&fibVals);
+  
+  Serial.printf("Reset all values\n");
 }
 
-void do_blinks(int ct) {
+int get_next(Seq* s) {
+  // Note in the report that you initially forgot to show a0 and a1 before 
+  // starting the sequence
+  int next;
+
+  // Don't skip the first two values
+  if (s->i == 0) next = s->a0;
+  else if (s->i == 1) next = s->a1;
+  else
+  {
+    // Otherwise, calculate the next value.
+    next = s->step(s);
+
+    s->prev = s->curr;
+    s->curr = next;
+  }
+
+  Serial.printf("Got %s value a%d = %d\n", s->name, s->i, next);
+  s->i++;
+  return next;
+}
+
+
+// Output
+void beep() {
+  analogWrite(BUZZER, 128);
+  delay(250);
+  analogWrite(BUZZER, 0);
+}
+
+void blink(int ct) {
+  // Force the LED off first
+  digitalWrite(LED, LOW);
+  
+  // Do nothing if ct == 0
+  if (ct <= 0) return;
+  
+  // Otherwise, perform blinks
   for (int i = 0; i < ct; i++)
   {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(250);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(250);
+    digitalWrite(LED, HIGH);
+    delay(300);
+    digitalWrite(LED, LOW);
+    delay(200);
   }
 }
