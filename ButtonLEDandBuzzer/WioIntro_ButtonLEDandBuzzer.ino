@@ -16,7 +16,7 @@
 #define FIB1 1
 
 typedef struct Button {
-  int pin;                        // Physical button
+  const int pin;                  // Physical button
   int read;                       // Current raw button reading
   int lastRead;                   // Previous raw button reading
   int stable;                     // Most recent stable button state
@@ -28,16 +28,17 @@ Button odd = { WIO_KEY_A, HIGH, HIGH, HIGH, 0 };  // Right
 Button fib = { WIO_KEY_B, HIGH, HIGH, HIGH, 0 };  // Middle
 Button res = { WIO_KEY_C, HIGH, HIGH, HIGH, 0 };  // Left
 
+
 typedef struct Seq Seq;
 typedef int (*func_t)(Seq* s);    // Used instead of switch or if-statement to
                                   // select the corresponding recurrence
                                   // relation in get_next()
 
 struct Seq {
-  char* name;
-  int i, a0, a1;  // Current index, first term value, second term value
-  int prev, curr;
-  func_t step;    // Pointer to the corresponding recurrence relation
+  const char* name;
+  const int a0, a1;
+  int i, prev, curr;
+  const func_t step;    // Pointer to the corresponding recurrence relation
 };
 
 // Recurrence relations
@@ -51,15 +52,17 @@ void reset(Seq* s) {
   s->curr = s->a1;
 }
 
-// Important values for each sequence
-Seq oddVals = { "odd", 0, ODD0, ODD1, ODD0, ODD1, odd_function };
-Seq fibVals = { "fibonacci", 0, FIB0, FIB1, FIB0, FIB1, fib_function };
+// Package recurrence relation and important values for each sequence
+Seq oddVals = { "odd", ODD0, ODD1, 0, ODD0, ODD1, odd_function };
+Seq fibVals = { "fibonacci", FIB0, FIB1, 0, FIB0, FIB1, fib_function };
 
 
-// Run once
+// Runs once
 void setup() {
-  // initialize top buttons as input
+  // Initialize serial output to console for debugging
   Serial.begin(115200);
+
+  // initialize top buttons as input
   pinMode(res.pin, INPUT_PULLUP);
   pinMode(odd.pin, INPUT_PULLUP);
   pinMode(fib.pin, INPUT_PULLUP);
@@ -114,7 +117,7 @@ bool button_pressed(Button* b) {
   // Grab a timestamp if the button has changed state
   if (b->read != b->lastRead) b->lastDebounceTime = millis();
 
-  // Ignore more state changes for 50ms
+  // Ignore state changes for 50ms
   if (millis() - b->lastDebounceTime > DEBOUNCE_DELAY)
   {
     // If it's been long enough, register the button press
@@ -132,7 +135,7 @@ bool button_pressed(Button* b) {
 
 
 // Button actions
-void reset_all() {
+void reset_all(void) {
   reset(&oddVals);
   reset(&fibVals);
   
@@ -163,7 +166,7 @@ int get_next(Seq* s) {
 
 
 // Output
-void beep() {
+void beep(void) {
   analogWrite(BUZZER, 128);
   delay(250);
   analogWrite(BUZZER, 0);
