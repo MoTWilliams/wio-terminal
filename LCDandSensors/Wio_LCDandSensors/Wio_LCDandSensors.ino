@@ -6,8 +6,10 @@
 */
 #include <stdbool.h>  // For boolean type in C
 #include <stdio.h>    // For snprintf
+#include <Wire.h>
 #include "LIS3DHTR.h"
 #include "TFT_eSPI.h"
+#include "AHT20.h"
 
 #define LED LED_BUILTIN
 #define BUZZER WIO_BUZZER
@@ -42,7 +44,7 @@ Button reset_b = { WIO_KEY_C, HIGH, HIGH, HIGH, 0 }; // Left
 // SENSING STATES
 
 typedef struct State State;
-typedef char* (*read_t)(char*, size_t);
+typedef char* (*read_t)(State*, char*, size_t);
 struct State {
   read_t readSensor;
   const char* name;
@@ -50,15 +52,16 @@ struct State {
   State* prev;
 };
 
-char* be_idle(char* buffer, size_t size);
-char* read_TempHumd(char* buffer, size_t size);
-char* read_Accel(char* buffer, size_t size);
-char* read_Light(char* buffer, size_t size);
+char* be_idle(State*, char* buffer, size_t size);
+char* read_NoSensor(State* state, char* buffer, size_t size);
+char* read_TempHumd(State*, char* buffer, size_t size);
+char* read_Accel(State*, char* buffer, size_t size);
+char* read_Light(State*, char* buffer, size_t size);
 
 State idle = { be_idle, "idle", NULL, NULL };
-State temp_humd = { read_TempHumd, "temperature/humidity sensing", NULL, NULL };
-State accel = { read_Accel, "acceleration sensing", NULL, NULL };
-State light = { read_Light, "light sensing", NULL, NULL };
+State temp_humd = { read_TempHumd, "temp/humd sensor", NULL, NULL };
+State accel = { read_Accel, "accelerometer", NULL, NULL };
+State light = { read_Light, "light sensor", NULL, NULL };
 
 void buildStateMachine() {
   idle.next = &temp_humd;
@@ -74,37 +77,16 @@ void buildStateMachine() {
   light.prev = &accel;
 }
 
-LIS3DHTR<TwoWire> lis; // Accelerometer listener
+AHT20 aht; // Temp/humidity sensor
+LIS3DHTR<TwoWire> lis; // Accelerometer
 TFT_eSPI tft; // LCD
 
 void setup() {
+  // OUTPUT
+
   // Initialize serial output to console for debugging
   Serial.begin(115200);
-
-  // initialize top buttons as input
-  pinMode(next_b.pin, INPUT_PULLUP);
-  pinMode(prev_b.pin, INPUT_PULLUP);
-  pinMode(reset_b.pin, INPUT_PULLUP);
-
-  // Initialize temperature/humidity sensor
-
-  // Initialize accelerometer
-  lis.begin(Wire1);
-  if (!lis)
-  {
-    // Halt and indicate error
-    Serial.println("ERROR: Accelerometer not found");
-    while (1)
-    {
-      blink(LONG);
-    }
-  }
-  lis.setOutputDataRate(LIS3DHTR_DATARATE_25HZ); // Data output rate
-  lis.setFullScaleRange(LIS3DHTR_RANGE_2G); // Acceleration range
-
-  // Initialize light sensor
-  pinMode(LIGHT_SENSOR, INPUT);
-
+  
   // Initialize buzzer and LED, and ensure that they are off
   pinMode(BUZZER, OUTPUT);
   pinMode(LED, OUTPUT);
@@ -113,14 +95,6 @@ void setup() {
 
   // Initialize LCD screen with green background and backlight on
   tft.begin();
-  if (!lis)
-  {
-    Serial.println("ERROR: LCD not found");
-    while (1)
-    {
-      blink(LONG);
-    }
-  }
   tft.setRotation(3);
   tft.fillScreen(TFT_GREEN);                // Green background
   tft.setTextColor(TFT_BLACK, TFT_GREEN);   // Black text, green background
@@ -129,12 +103,41 @@ void setup() {
 
   // Create links for the state machine
   buildStateMachine();
+
+  // USER INPUT
+
+  // initialize top buttons as input
+  pinMode(next_b.pin, INPUT_PULLUP);
+  pinMode(prev_b.pin, INPUT_PULLUP);
+  pinMode(reset_b.pin, INPUT_PULLUP);
+
+  // SENSOR INPUT
+
+  // Initialize temperature/humidity sensor
+  aht.begin();
+  // Check connection by attempting to read from the sensor. Continue without
+  // input if sensor not found.
+  float _h, _t;
+  if (!aht.getSensor(&_h, &_t)) temp_humd.readSensor = read_NoSensor;
+
+  // Initialize accelerometer
+  lis.begin(Wire1);
+  // Continue without accelerometer input if not found
+  if (!lis) accel.readSensor = read_NoSensor;
+  else
+  {
+    lis.setOutputDataRate(LIS3DHTR_DATARATE_25HZ); // Data output rate
+    lis.setFullScaleRange(LIS3DHTR_RANGE_2G); // Acceleration range
+  }
+
+  // Initialize light sensor
+  pinMode(LIGHT_SENSOR, INPUT);
 }
 
 void loop() {
-  static State* currentState = &idle;
   static int textYval = TEXT_START;
-  
+  static State* currentState = &idle;
+
   // Button presses trigger state transitions
 
   // Button A--cycle forward
@@ -164,18 +167,7 @@ void loop() {
     textYval = TEXT_START;
   }
 
-  // If the screen fills up, clear and start over
-  if (textYval + TEXT_HEIGHT > SCREEN_HEIGHT)
-  {
-    tft.fillScreen(TFT_GREEN);
-    textYval = TEXT_START;
-  }
-
-  char buffer[BUFFER_SIZE];
-  currentState->readSensor(buffer, sizeof(buffer));
-  Serial.printf("%s\n",buffer);
-  tft.drawString(buffer, 0, textYval);
-  delay(50);  // Prevent excessive output
+  updateLCD(currentState, &textYval);
 }
 
 /******************************************************************************
@@ -209,31 +201,39 @@ bool button_pressed(Button* b) {
 /******************************************************************************
  *                               DATA_CAPTURE                                 *
  ******************************************************************************/
-char* be_idle(char* buffer, size_t size) {
+char* be_idle(State*, char* buffer, size_t size) {
   snprintf(buffer, size, "idle");
   return buffer;
 }
 
-char* read_TempHumd(char* buffer, size_t size) {
-  float temp, humd;
-  temp = 0;
-  humd = 0;
-
-  snprintf(buffer, size, "Temp: %7.2fC, Hum: %5.2f%%", temp, humd);
+char* read_NoSensor(State* state, char* buffer, size_t size) {
+  snprintf(buffer, size, "%s not found", state->name);
   return buffer;
 }
 
-char* read_Accel(char* buffer, size_t size) {
+char* read_TempHumd(State*, char* buffer, size_t size) {
+  float humd, temp;
+  
+  if (!aht.getSensor(&humd, &temp))
+    snprintf(buffer, size, "Temp/humidity read failed");
+  
+  else
+    snprintf(buffer, size, "Temp: %7.2fC, Hum: %5.2f%%", temp, humd);
+  
+  return buffer;
+}
+
+char* read_Accel(State*, char* buffer, size_t size) {
   float x, y, z;
   x = lis.getAccelerationX();
   y = lis.getAccelerationY();
   z = lis.getAccelerationZ();
 
-  snprintf(buffer, size, "X: %5.2f, Y: %5.2f, Z: %5.2f", x, y, z);
+  snprintf(buffer, size, "X: %5.2f Y: %5.2f Z: %5.2f", x, y, z);
   return buffer;
 }
 
-char* read_Light(char* buffer, size_t size) {
+char* read_Light(State*, char* buffer, size_t size) {
   int light = analogRead(LIGHT_SENSOR);
 
   snprintf(buffer, size, "Light value: %4d", light);
@@ -243,6 +243,30 @@ char* read_Light(char* buffer, size_t size) {
 /******************************************************************************
  *                                  OUTPUT                                    *
  ******************************************************************************/
+// Handle LCD output
+void updateLCD(State* state, int* textYval) {
+  static unsigned long lastUpdate = 0; // Time since last update
+  const unsigned long UPDATE_INTERVAL = 100;
+
+  // If the screen fills up, clear and start over
+  if (*textYval + TEXT_HEIGHT > SCREEN_HEIGHT)
+  {
+    tft.fillScreen(TFT_GREEN);
+    *textYval = TEXT_START;
+  }
+
+  // Only update every 100 ms
+  if (millis() - lastUpdate >= UPDATE_INTERVAL)
+  {
+    lastUpdate = millis();
+
+    char buffer[BUFFER_SIZE];
+    state->readSensor(state, buffer, sizeof(buffer));
+    Serial.printf("%s\n",buffer);
+    tft.drawString(buffer, 0, *textYval);
+  }
+}
+
 // Beep once
 void beep(void) {
   analogWrite(BUZZER, 128);
