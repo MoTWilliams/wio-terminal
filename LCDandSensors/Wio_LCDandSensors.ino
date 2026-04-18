@@ -7,11 +7,10 @@
 #include <stdbool.h>  // For boolean type in C
 #include <stdio.h>    // For snprintf
 #include <Wire.h>
-#include "LIS3DHTR.h"
-#include "TFT_eSPI.h"
-#include "AHT20.h"
+#include "LIS3DHTR.h" // Accelerometer
+#include "TFT_eSPI.h" // LCD
+#include "AHT20.h"    // Temp/humidity sensor
 
-#define LED LED_BUILTIN
 #define BUZZER WIO_BUZZER
 #define LIGHT_SENSOR WIO_LIGHT
 
@@ -44,7 +43,7 @@ Button reset_b = { WIO_KEY_C, HIGH, HIGH, HIGH, 0 }; // Left
 // SENSING STATES
 
 typedef struct State State;
-typedef char* (*read_t)(State*, char*, size_t);
+typedef void (*read_t)(State*, char*, size_t);
 struct State {
   read_t readSensor;
   const char* name;
@@ -52,11 +51,11 @@ struct State {
   State* prev;
 };
 
-char* be_idle(State*, char* buffer, size_t size);
-char* read_NoSensor(State* state, char* buffer, size_t size);
-char* read_TempHumd(State*, char* buffer, size_t size);
-char* read_Accel(State*, char* buffer, size_t size);
-char* read_Light(State*, char* buffer, size_t size);
+void be_idle(State*, char* buffer, size_t size);
+void read_NoSensor(State* state, char* buffer, size_t size);
+void read_TempHumd(State*, char* buffer, size_t size);
+void read_Accel(State*, char* buffer, size_t size);
+void read_Light(State*, char* buffer, size_t size);
 
 State idle = { be_idle, "idle", NULL, NULL };
 State temp_humd = { read_TempHumd, "temp/humd sensor", NULL, NULL };
@@ -77,9 +76,9 @@ void buildStateMachine() {
   light.prev = &accel;
 }
 
-AHT20 aht; // Temp/humidity sensor
-LIS3DHTR<TwoWire> lis; // Accelerometer
-TFT_eSPI tft; // LCD
+AHT20 aht;                // Temp/humidity sensor
+LIS3DHTR<TwoWire> lis;    // Accelerometer
+TFT_eSPI tft;             // LCD
 
 void setup() {
   // OUTPUT
@@ -87,11 +86,9 @@ void setup() {
   // Initialize serial output to console for debugging
   Serial.begin(115200);
   
-  // Initialize buzzer and LED, and ensure that they are off
+  // Initialize buzzer, and ensure that it is off
   pinMode(BUZZER, OUTPUT);
-  pinMode(LED, OUTPUT);
   analogWrite(BUZZER, 0);
-  digitalWrite(LED, LOW);
 
   // Initialize LCD screen with green background and backlight on
   tft.begin();
@@ -126,8 +123,8 @@ void setup() {
   if (!lis) accel.readSensor = read_NoSensor;
   else
   {
-    lis.setOutputDataRate(LIS3DHTR_DATARATE_25HZ); // Data output rate
-    lis.setFullScaleRange(LIS3DHTR_RANGE_2G); // Acceleration range
+    lis.setOutputDataRate(LIS3DHTR_DATARATE_25HZ);    // Data output rate
+    lis.setFullScaleRange(LIS3DHTR_RANGE_2G);         // Acceleration range
   }
 
   // Initialize light sensor
@@ -201,43 +198,51 @@ bool button_pressed(Button* b) {
 /******************************************************************************
  *                               DATA_CAPTURE                                 *
  ******************************************************************************/
-char* be_idle(State*, char* buffer, size_t size) {
+void be_idle(State*, char* buffer, size_t size) {
   snprintf(buffer, size, "idle");
-  return buffer;
 }
 
-char* read_NoSensor(State* state, char* buffer, size_t size) {
+void read_NoSensor(State* state, char* buffer, size_t size) {
   snprintf(buffer, size, "%s not found", state->name);
-  return buffer;
 }
 
-char* read_TempHumd(State*, char* buffer, size_t size) {
+// Temp/humidity sensor read takes 80ms (blocking), no matter what:
+// https://www.aosong.com/userfiles/files/media/Data%20Sheet%20AHT20.pdf p.12
+void read_TempHumd(State*, char* buffer, size_t size) {
+  const int READ_INTERVAL = 2000; // 2 seconds
+
+  static unsigned long lastRead = 0;
+  static char cacheBuffer[BUFFER_SIZE] = "   No temp/humidity yet    ";
   float humd, temp;
+
+  // Only read every 2 seconds
+  if (millis() - lastRead >= READ_INTERVAL)
+  {
+    lastRead = millis();
+
+    if (!aht.getSensor(&humd, &temp))
+      snprintf(cacheBuffer, sizeof(cacheBuffer), " Temp/humidity read failed ");
+    else
+      snprintf(cacheBuffer, sizeof(cacheBuffer), 
+                "Temp: %7.2fC, Hum: %5.2f%%", temp, humd*100 );
+  }
   
-  if (!aht.getSensor(&humd, &temp))
-    snprintf(buffer, size, "Temp/humidity read failed");
-  
-  else
-    snprintf(buffer, size, "Temp: %7.2fC, Hum: %5.2f%%", temp, humd);
-  
-  return buffer;
+  snprintf(buffer, size, "%s", cacheBuffer);
 }
 
-char* read_Accel(State*, char* buffer, size_t size) {
+void read_Accel(State*, char* buffer, size_t size) {
   float x, y, z;
   x = lis.getAccelerationX();
   y = lis.getAccelerationY();
   z = lis.getAccelerationZ();
 
   snprintf(buffer, size, "X: %5.2f Y: %5.2f Z: %5.2f", x, y, z);
-  return buffer;
 }
 
-char* read_Light(State*, char* buffer, size_t size) {
+void read_Light(State*, char* buffer, size_t size) {
   int light = analogRead(LIGHT_SENSOR);
 
   snprintf(buffer, size, "Light value: %4d", light);
-  return buffer;
 }
 
 /******************************************************************************
@@ -245,7 +250,7 @@ char* read_Light(State*, char* buffer, size_t size) {
  ******************************************************************************/
 // Handle LCD output
 void updateLCD(State* state, int* textYval) {
-  static unsigned long lastUpdate = 0; // Time since last update
+  static unsigned long lastUpdate = 0; // Time of last update
   const unsigned long UPDATE_INTERVAL = 100;
 
   // If the screen fills up, clear and start over
@@ -255,7 +260,7 @@ void updateLCD(State* state, int* textYval) {
     *textYval = TEXT_START;
   }
 
-  // Only update every 100 ms
+  // Update every 100 ms
   if (millis() - lastUpdate >= UPDATE_INTERVAL)
   {
     lastUpdate = millis();
@@ -274,20 +279,3 @@ void beep(void) {
   analogWrite(BUZZER, 0);
 }
 
-// Blink for indicating error state
-void blink(int length) {
-  digitalWrite(LED, HIGH);
-  delay(length);
-  digitalWrite(LED, LOW);
-  delay(length);
-}
-
-// Toggle LED for debounce debugging
-void toggle_LED() {
-  // Just initialize once
-  static int newState = LOW;
-
-  // Perform toggle
-  newState = !newState;
-  digitalWrite(LED, newState);
-}
