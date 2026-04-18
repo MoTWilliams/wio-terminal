@@ -17,10 +17,11 @@ Sensor accel = { "accelerometer", init_Accel, read_Accel };
 Sensor light = { "light sensor", init_Light, read_Light };
 
 // HIGH = button in released state
-static Button accel_b = { WIO_KEY_A, HIGH, HIGH, HIGH, 0, &accel };
-static Button temp_b  = { WIO_KEY_B, HIGH, HIGH, HIGH, 0, &temp };
+Button accel_b = { WIO_KEY_A, 0, requestAccel, &accel };
+Button temp_b  = { WIO_KEY_B, 0, requestTemp, &temp };
 // WIO_KEY_C is unused in this lab
 
+volatile Button* triggeredButton;
 volatile bool sensorRequested;
 
 void setup() {
@@ -39,12 +40,11 @@ void setup() {
 }
 
 void loop() {
-  // Reject new commands while a timed command is running
-  if (executing()) 
-    { Serial.println("Timed operation in progress"); return; }
-
   // Listen for serial commands. If one is received, begin executing it.
   receiveAndStartSerialCommand();
+
+  // Listen for and execute botton commands
+  executeButtonCommand((Button*)triggeredButton);
 
   // Monitor running actions
   mindSerialCommand();

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "serial.h"
 #include "sensor.h"
+#include "button.h"
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -20,6 +21,17 @@ static unsigned long lastRepStarted = 0;
 static int completedReps = 0;
 
 bool executing() { return busy; }
+
+void executeButtonCommand(Button* b) {
+  if (button_pressed(b)) {
+    if (busy)
+    {
+      Serial.println("Timed operation in progress");
+      return;
+    }
+    b->sensor->readSensor(b->sensor);
+  }
+}
 
 static bool parseCommand(char* str) {
   char* pIn = str;
@@ -84,8 +96,12 @@ static bool parseCommand(char* str) {
 }
 
 void receiveAndStartSerialCommand() {
-  if (busy) return;
   if (!Serial.available()) return;
+  if (busy)
+  {
+    Serial.println("Timed operation in progress");
+    return;
+  }
 
   char buffer[128 + 1] = {0};
   serial_readline(buffer, sizeof(buffer));
