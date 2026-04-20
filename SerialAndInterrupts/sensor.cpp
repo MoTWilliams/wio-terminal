@@ -1,3 +1,9 @@
+/*
+  Morgan Williams
+  CSCE 3612.001
+  Lab 4: Wio Serial and Interrupts - sensor.cpp
+  Apr 22, 2026
+*/
 #include <Arduino.h>
 #include "sensor.h"
 #include "LIS3DHTR.h" // Accelerometer
@@ -5,14 +11,8 @@
 #include <Wire.h>
 #include <stdbool.h>
 
+// Initialize a sensor through its assigned setup function
 void sensor_init(Sensor* s) { s->init(s); }
-
-/******************************************************************************
- *                                    IDLE                                    * 
- ******************************************************************************/
-void read_Idle(Sensor*) {
-  Serial.printf("Waiting for input\n");
-}
 
 /******************************************************************************
  *                            TEMPERATURE/HUMIDITY                            * 
@@ -20,6 +20,7 @@ void read_Idle(Sensor*) {
 AHT20 aht;
 
 static void init_TempHumid(Sensor* s) {
+  // AHT20 device is shared, so only initialize it once
   static bool began = false;
   if (!began) { aht.begin(); began = true; }
 
@@ -44,7 +45,7 @@ void read_Humid(Sensor*) {
   if (!aht.getSensor(&humid, &_t))
     Serial.printf("AHT20 (humidity) read failed\n");
   else
-    Serial.printf("Humidity: %.2f%%\n", humid);
+    Serial.printf("Humidity: %.2f%%\n", humid * 100);
 }
 
 /******************************************************************************
@@ -87,7 +88,7 @@ void init_Light(Sensor*) {
 
 void read_Light(Sensor*) {
   int light = analogRead(LIGHT_SENSOR);
-  Serial.printf("Light value: %4d\n", light);
+  Serial.printf("Light value: %d\n", light);
 }
 
 /******************************************************************************
