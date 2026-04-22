@@ -7,11 +7,8 @@
 #ifndef BUZZER_H
 #define BUZZER_H
 
-#include <stdbool.h>
-
 void buzzer_init();
 void buzzer_beep();         // Start a non-blocking beep
 void buzzer_update();       // Call in main loop to maintain buzzer state
-bool buzzer_isBuzzing();    // Returns true while the buzzer is active
 
 #endif

@@ -42,5 +42,3 @@ void buzzer_update() {
   analogWrite(BUZZER, OFF);
   isBuzzing = false;
 }
-
-bool buzzer_isBuzzing() { return isBuzzing; }

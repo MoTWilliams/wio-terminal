@@ -18,8 +18,8 @@ Sensor light = { "light sensor", init_Light, read_Light };
 Button accel_b = { WIO_KEY_A, 0, requestAccel, &accel, false };
 Button temp_b  = { WIO_KEY_B, 0, requestTemp, &temp, false };
 
-// Identifies which button triggered an interrupt request. SET BY button ISRs.
-// SHARED WITH command module.
+// Identifies which button triggered an interrupt request. Shared with the 
+// command module, set by the ISRs
 volatile Button* triggeredButton;
 
 void setup() {

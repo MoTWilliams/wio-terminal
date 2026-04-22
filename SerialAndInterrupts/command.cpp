@@ -12,13 +12,10 @@
 #include <stdlib.h>
 
 /******************************************************************************
- *                        EXTERNAL BUTTON/SENSOR STATE                        * 
+ *                            BUTTON COMMAND STATE                            * 
  ******************************************************************************/
 extern Button accel_b;
 extern Button temp_b;
-
-extern Sensor light;
-extern Sensor humid;
 
 // Identifies which button triggered an interrupt request. SET BY button ISRs.
 // SHARED WITH main loop.
@@ -28,8 +25,11 @@ extern volatile Button* triggeredButton;
 static volatile bool sensorRequested;
 
 /******************************************************************************
- *                       SERIAL COMMAND EXECUTION STATE                       * 
+ *                            SERIAL COMMAND STATE                            * 
  ******************************************************************************/
+extern Sensor light;
+extern Sensor humid;
+
 static const char READ[] = "READ ";
 static const char LIGHT[] = "LGHT ";
 static const char HUMID[] = "HUMD ";
