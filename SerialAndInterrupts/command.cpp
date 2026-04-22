@@ -185,11 +185,9 @@ void serialCommand_update() {
   lastRepStarted = millis();
   completedReps++;
 
-  // Reps are finished. Reset and allow new command
-  if (completedReps >= repeats) 
-  {
-    busy = false;
-    completedReps = 0;
-    Serial.println("Executed");
-  }
+  if (completedReps < repeats) return;
+
+  busy = false;
+  completedReps = 0;
+  Serial.println("Executed");
 }
