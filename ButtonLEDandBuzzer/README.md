@@ -10,6 +10,6 @@ Features debounced button input and real-time output via LED and Serial debug. I
 - Upload to device
 
 ## Controls:
-**Button A**: Generate next odd number
-**Button B**: Generate next Fibonacci number
+**Button A**: Generate next odd number  
+**Button B**: Generate next Fibonacci number  
 **Button C**: Reset both sequences
