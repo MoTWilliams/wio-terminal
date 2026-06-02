@@ -1,9 +1,3 @@
-/*
-  Morgan Williams
-  CSCE 3612.001
-  Lab 3: Wio LCD and Sensors
-  Apr 2, 2026
-*/
 #include <stdbool.h>  // For boolean type in C
 #include <stdio.h>    // For snprintf
 #include <Wire.h>
