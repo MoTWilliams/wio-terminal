@@ -1,9 +1,3 @@
-/*
-  Morgan Williams - mtw0067
-  CSCE 3612.001
-  Lab 2: Wio Intro
-  Feb 19, 2026
-*/
 #include <stdbool.h>              // For using bool type in C
 
 #define LED LED_BUILTIN
