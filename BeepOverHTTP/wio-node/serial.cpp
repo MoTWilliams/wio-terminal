@@ -3,7 +3,7 @@
 
 static unsigned long WAIT_DURATION = 500; // 1/2 second
 
-void serial_init() {
+void serial_init(void) {
         Serial.begin(115200);
         unsigned long startedAt = millis();
         while (!Serial)

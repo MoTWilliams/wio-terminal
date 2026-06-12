@@ -14,12 +14,12 @@ static unsigned long BEEP_DURATION = 250;
 // Timestamp when the current beep started
 static unsigned long lastStarted = 0;
 
-void buzzer_init() {
+void buzzer_init(void) {
   pinMode(BUZZER, OUTPUT);
   analogWrite(BUZZER, OFF);
 }
 
-void buzzer_beep() {
+void buzzer_beep(void) {
   // Start a non-blocking beep
   analogWrite(BUZZER, ON);
 
@@ -27,11 +27,11 @@ void buzzer_beep() {
   lastStarted = millis();
 }
 
-void buzzer_update() {
+void buzzer_update(unsigned long now) {
   if (!isBuzzing) return;
 
   // Continue sounding buzzer until duration has elapsed
-  if (millis() - lastStarted < BEEP_DURATION) return;
+  if (now - lastStarted < BEEP_DURATION) return;
 
   analogWrite(BUZZER, OFF);
   isBuzzing = false;

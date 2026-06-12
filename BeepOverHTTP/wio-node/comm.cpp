@@ -8,6 +8,7 @@
 #include "arduino_secrets.h"
 #include "buzzer.h"
 
+
 typedef enum {
         WAITING,
         RECEIVING_HEADERS,
@@ -17,26 +18,19 @@ typedef enum {
 } RequestStatuses;
 
 int requestStatus = WAITING;
-
-void wifiStation_init() {
-        WiFi.mode(WIFI_STA);    // Configure as station
-        WiFi.disconnect();      // Drop any existing connections
-        WiFi.begin(SSID, PASSWORD);
-
-        while (WiFi.status() != WL_CONNECTED) delay(500);
-
-        WIO_IP = WiFi.localIP().toString().c_str();
-        Serial.printf("Connected--IP Address: %s\n", WIO_IP);
-}
-
-WiFiServer server(8080);
 WiFiClient client;
 
-void server_init() {
+/******************************************************************************
+ *                                  Server                                    *
+ ******************************************************************************/
+
+WiFiServer server(8080);
+
+void server_init(void) {
         server.begin();
 }
 
-void server_update() {
+void server_update(void) {
         if (requestStatus == WAITING)
         {
                 client = server.available();
@@ -160,41 +154,21 @@ void server_update() {
         }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void comm_init() {
-/******************************************************************************
- *                                 Station                                    *
- ******************************************************************************/
-        
-/******************************************************************************
- *                                  Server                                    *
- ******************************************************************************/
-
 /******************************************************************************
  *                                  Client                                    *
  ******************************************************************************/
 
+/******************************************************************************
+ *                                 Station                                    *
+ ******************************************************************************/
+
+void wifiStation_init(void) {
+        WiFi.mode(WIFI_STA);    // Configure as station
+        WiFi.disconnect();      // Drop any existing connections
+        WiFi.begin(SSID, PASSWORD);
+
+        while (WiFi.status() != WL_CONNECTED) delay(500);
+
+        WIO_IP = WiFi.localIP().toString().c_str();
+        Serial.printf("Connected--IP Address: %s\n", WIO_IP);
 }
