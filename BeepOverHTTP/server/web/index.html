@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>🌟🦄🌈✨*𝘽𝙀𝙀𝙋*✨🌈🦄🌟</title>
+        <style>
+            .center {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                gap: 2rem;
+                height: 100vh;
+                width: 100vw;
+            }
+
+            .button {
+                width: 90vw;
+                aspect-ratio: 5/2;
+                font-size: 15vw;
+                color:blue
+            }
+        </style>
+    </head>
+    <body style="background-color:aqua; margin: 0;">
+        <div class="center">
+            <button onclick="requestBeep()" class="button">
+                ✨<i><b><b>BEEP</b></b></i>✨
+            </button>
+
+            <script>
+                function requestBeep() {
+                    fetch("/api/beep", {method: "POST"});
+                }
+            </script>
+        </div>
+    </body>
+</html>

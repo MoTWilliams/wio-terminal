@@ -1,10 +1,11 @@
 #include <rpcWiFi.h>
 #include "arduino_secrets.h"
 
+// https://wiki.seeedstudio.com/Wio-Terminal-Wi-Fi/#wi-fi-client-example-code
+
 void setup() {
         Serial.begin(115200);
         while(!Serial); // Wait for Serial to be ready
-        delay(1000);
 
         // Set WiFi to station mode and disconnect from an AP if it was
         // previously connected
@@ -12,7 +13,7 @@ void setup() {
         WiFi.disconnect();
         delay(2000);
 
-        WiFi.begin(ssid, password);
+        WiFi.begin(SSID, PASSWORD);
 
         while (WiFi.status() != WL_CONNECTED) {
                 delay(500);
@@ -24,15 +25,13 @@ void setup() {
 }
 
 void loop() {
-        const uint16_t port = 8080; // Default port
-
         Serial.print("Connecting to ");
-        Serial.println(host);
+        Serial.println(HOST);
 
         // Use WiFiClient class to create TCP connections
         WiFiClient client;
 
-        if (!client.connect(host, port)) {
+        if (!client.connect(HOST, PORT)) {
                 Serial.println("Connection failed.");
                 Serial.println("Waiting 5 seconds before retrying...");
                 delay(5000);
