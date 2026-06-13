@@ -14,57 +14,55 @@ typedef enum {
         CRITICAL
 } Levels;
 
-void build_log(const char *msg, ...) {
-        
-
-        char typesBuffer[256 + 1] = {0};
-        char *t_p = typesBuffer;
-        bool validString = true;
-        for (const char *p = msg; *p != '\0'; p++)
+static bool validate(const char *fmt) {
+        for (const char *p = fmt; *p != '\0'; p++)
         {
-                // Abort parsing if the last character invalidated the string
-                if (!validString) break;
+                // See '%' and look at the next character
+                if (*p != '%') continue;
+                p++;
+
+                // Don't allow bare '%' at the end
+                if (*p == '\0') return false;
+
+                // Literal '%', or char, string, int, or unsigned int
+                if (strchr("csdu%", *p)) continue;
+
+                // See 'l' and look at the next character
+                if (*p != 'l') return false;
+                p++;
+
+                // Don't allow bare '%l' at end
+                if (*p == '\0') return false;
+
+                // Only signed and unsigned ints can be long
+                if (*p == 'd' || *p == 'u') continue;
                 
-                // Just add the character to the buffer (eventually)
-                if (*p != '%') { p++; continue; }
-                
-                switch (*(p + 1))
-                {
-                        case 'l':
-                                if (*(p + 2) == 'u') 
-                                {
-                                        *t_p++ = 'U';
-                                        p++;
-                                        break;
-                                }
-                                
-                                // Error: incomplete format specifier
-                                validString = false;
-                                break;
-                        case '%':
-                                *t_p++ = '%';
-                                break;
-                        case 's':
-                                *t_p++ = 's';
-                                break;
-                        case 'd':
-                                *t_p++ = 'd';
-                                break;
-                        case 'u':
-                                *t_p++ = 'u';
-                                break;
-                        default:
-                                validString = false;
-                                break;
-                }
+                // Anything else is invalid
+                return false;
         }
 
-        if (!validString)
-                Serial.println("Malformed log string");
-        else
-                Serial.printf("Types: %s\n", typesBuffer);
+        // If we get all the way to the end, it's a valid string
+        return true;
 }
 
+static void buildMsg(char* buffer, size_t size, const char *fmt, ...) {
+        if (!validate(fmt))
+        {
+                Serial.println("Malformed log message: Invalid string");
+                return;
+        }
+        
+        // String is valid. Perform substitutions        
+        va_list args;
+        va_start(args, fmt);
+        int status = vsnprintf(buffer, size, fmt, args);
+        va_end(args);
+
+        if (status < 0 || status >= MAX_LEN)
+                Serial.println("Malformed log message: Too long?");
+        else
+                Serial.println(buffer);
+}
 
 
 

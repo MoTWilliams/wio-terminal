@@ -39,6 +39,7 @@ void server_update(void) {
                 if (!client) return;
                 Serial.println("Got client");
                 requestStatus = RECEIVING_HEADERS;
+                return;
         }
 
         static int bodyLen;

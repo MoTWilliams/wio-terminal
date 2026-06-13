@@ -58,7 +58,7 @@ void button_update(unsigned long now) {
                 int x = -4;
                 unsigned int y = 3;
                 unsigned long z = millis();
-                build_log("c-string: %s; signed integer: %d; unsigned integer: %u; unsigned long %lu; percent literal: %%\n", b, x, y, z);
+                build_log("c-string: %s; signed integer: %d; unsigned integer: %u; unsigned long %lu; percent literal: %%", b, x, y, z);
                 build_log("%");
                 build_log("%l");
                 
