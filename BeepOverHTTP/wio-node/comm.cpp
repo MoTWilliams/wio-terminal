@@ -2,9 +2,11 @@
 // https://wiki.seeedstudio.com/Wio-Terminal-Wi-Fi/#wi-fi-client-example-code
 #include <Arduino.h>
 #include <string.h>
+#include <stdbool.h>
 #include <rpcWiFi.h>
 #include <WiFiClient.h>
 #include "comm.h"
+#include "logging.h"
 #include "arduino_secrets.h"
 #include "buzzer.h"
 
@@ -163,12 +165,52 @@ void server_update(void) {
  ******************************************************************************/
 
 void wifiStation_init(void) {
+        unsigned long TIMEOUT = 10000;
+        unsigned long CHECK_INTERVAL = 1000;
+        
         WiFi.mode(WIFI_STA);    // Configure as station
         WiFi.disconnect();      // Drop any existing connections
+        
         WiFi.begin(SSID, PASSWORD);
+        unsigned long now = millis();
+        unsigned long connectionStarted = now;
+        unsigned long lastChecked = now;
+        bool connectionFound = false;
 
-        while (WiFi.status() != WL_CONNECTED) delay(500);
+        Serial.println("Connecting to Wi-Fi...");
+        while (!connectionFound && now - connectionStarted < TIMEOUT)
+        {
+                // Make the loop less busy. This delay can be removed if this
+                // logic is moved into loop() to run repeatedly whenever
+                // connection is lost
+                delay(100);
+                now = millis();
 
-        WIO_IP = WiFi.localIP().toString().c_str();
-        Serial.printf("Connected--IP Address: %s\n", WIO_IP);
+                // Only check after CHECK_INTERVAL has passed
+                if (now - lastChecked < CHECK_INTERVAL) continue;
+                
+                // Keep checking if no connection found
+                Serial.println("Checking connection...");
+                if (WiFi.status() != WL_CONNECTED) lastChecked = now;
+                else connectionFound = true;
+        }
+
+        // Halt if no connection established after TIMEOUT
+        if (!connectionFound) 
+        {
+                Serial.print("Connection failed: ");
+                Serial.println(WiFi.status());
+                while (true);
+        }
+
+        // Otherwise, announce address and begin loop()
+        IPAddress ip = WiFi.localIP();
+
+        char ipBuffer[16];
+        snprintf(
+                ipBuffer, sizeof(ipBuffer), 
+                "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]
+        );
+
+        Serial.printf("Connected--IP Address: %s\n", ipBuffer);
 }
