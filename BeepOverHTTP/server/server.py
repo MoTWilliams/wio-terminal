@@ -1,13 +1,14 @@
 # pylint: disable=invalid-name
+# pylint: disable=import-outside-toplevel
 """
 Simple HTTP server in Python: 
 https://gist.github.com/mdonkers/63e115cc0c79b4f6b8b3a6b797e485c7
 """
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import logging
+from requests import post # Install this in a virtual environment
 import paths as p
 import arduino_secrets as s
-from requests import post # Install this in a virtual environment
 
 logging.basicConfig(
         level=logging.INFO,
