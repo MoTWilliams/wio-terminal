@@ -1,10 +1,10 @@
-#include "serial.h"
+#include "logging.h"
 #include "comm.h"
 #include "buzzer.h"
 #include "button.h"
 
 void setup() {
-        serial_init();
+        log_init();
 
         wifiStation_init();
         server_init();
