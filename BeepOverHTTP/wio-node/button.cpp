@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 #include "buzzer.h"
+#include "logging.h"
 
 typedef enum {
         WAITING,
@@ -53,6 +54,13 @@ void button_update(unsigned long now) {
         {
                 // Perform the button action
                 buzzer_beep();
+                char* b = "Banana";
+                int x = -4;
+                unsigned int y = 3;
+                unsigned long z = millis();
+                build_log("c-string: %s; signed integer: %d; unsigned integer: %u; unsigned long %lu; percent literal: %%\n", b, x, y, z);
+                build_log("%");
+                build_log("%l");
                 
                 // Go back to listening
                 buttonState = WAITING;
