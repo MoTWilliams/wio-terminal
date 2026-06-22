@@ -3,6 +3,6 @@
 
 void buzzer_init(void);
 void buzzer_beep(void); // Start a non-blocking beep
-void buzzer_update(unsigned long now); // Call in loop() to maintain state
+void buzzer_update(void); // Call in loop() to maintain state
 
 #endif

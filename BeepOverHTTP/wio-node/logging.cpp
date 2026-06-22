@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include "logging.h"
 
+/* NO MORE WORK ON THIS FOR THIS PROTOTYPE. DON'T GET DERAILED AGAIN LUL */
+
 static bool serialActive = false;
 
 typedef enum {
@@ -58,7 +60,7 @@ static void buildMsg(char* buffer, size_t size, const char *fmt, ...) {
         int status = vsnprintf(buffer, size, fmt, args);
         va_end(args);
 
-        if (status < 0 || status >= MAX_LEN)
+        if (status < 0 || status >= size)
                 Serial.println("Malformed log message: Too long?");
         else
                 Serial.println(buffer);

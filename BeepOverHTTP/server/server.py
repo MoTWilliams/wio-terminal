@@ -1,5 +1,6 @@
 # pylint: disable=invalid-name
 # pylint: disable=import-outside-toplevel
+# pylint: disable=global-statement
 """
 Simple HTTP server in Python: 
 https://gist.github.com/mdonkers/63e115cc0c79b4f6b8b3a6b797e485c7
@@ -18,6 +19,8 @@ server_log = logging.getLogger("server")
 wio_log = logging.getLogger("wio")
 
 WIO_URL = f"http://{s.WIO_NODE}:{s.PORT}/"
+
+event = ""
 
 class RequestHandler(BaseHTTPRequestHandler):
     """ Custom HTTP request handler
@@ -47,11 +50,13 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         """ Retrieve the webpage
         """
+        global event
+
         match self.path:
             case "/":
                 self._send_file("index.html", "text/html")
             case "/style.css":
-                self._send_file("style.css", "test/css")
+                self._send_file("style.css", "text/css")
             case "/app.js":
                 self._send_file("app.js", "application/javascript")
             case "/favicon.ico":
@@ -60,22 +65,52 @@ class RequestHandler(BaseHTTPRequestHandler):
             case "/.well-known/appspecific/com.chrome.devtools.json":
                 self.send_response(204)
                 self.end_headers()
+            case "/api/pending_event":
+                body = event.encode("utf-8")
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+
+                self.wfile.write(body)
+                event = ""
+            case "/Dog.wav":
+                self._send_file("Dog.wav", "audio/wav")
             case _:
                 self._not_found(self.path)
 
+
     def do_POST(self):
-        """ Handle the BEEP request
-        """
+        """ Handle the POST requests """
+        global event
+
+        content_length = int(self.headers.get("Content-Length", 0))
+        print(self.rfile.read(content_length).decode("utf-8"))
+
         match self.path:
-            case "/api/beep":
-                # Send beep POST request
+            case "/api/beep/wio":
+                # Send beep POST request to Wio
                 post(WIO_URL, data="beep", timeout=2)
 
-                # Report success only after Wio receives and responds to request
+                # Report success only after Wio handles to request
                 self.send_response(200)
                 self.send_header("Content-Type", "text/plain")
                 self.end_headers()
-                self.wfile.write(b"Beep instruction received")
+                self.wfile.write(b"Wio beeped!")
+            case "/api/bark/web":
+                # Queue webapp bark event
+                event = "bark"
+
+                response = b"Barking"
+
+                # Report success only after webapp handles request
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(response)))
+                
+                self.end_headers()
+                self.wfile.write(response)
             case _:
                 self._not_found(self.path)
 

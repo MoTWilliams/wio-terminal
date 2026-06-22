@@ -27,11 +27,11 @@ void buzzer_beep(void) {
   lastStarted = millis();
 }
 
-void buzzer_update(unsigned long now) {
+void buzzer_update(void) {
   if (!isBuzzing) return;
 
   // Continue sounding buzzer until duration has elapsed
-  if (now - lastStarted < BEEP_DURATION) return;
+  if (millis() - lastStarted < BEEP_DURATION) return;
 
   analogWrite(BUZZER, OFF);
   isBuzzing = false;

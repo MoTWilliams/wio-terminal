@@ -3,7 +3,7 @@
 #include <stdbool.h>
 
 #include "buzzer.h"
-#include "logging.h"
+#include "comm.h"
 
 typedef enum {
         WAITING,
@@ -25,7 +25,7 @@ void button_init(void) {
         attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), isr, FALLING);
 }
 
-void button_update(unsigned long now) {
+void button_update() {
         if (buttonState == WAITING) return;
         
         if (buttonState == BOUNCING)
@@ -38,6 +38,7 @@ void button_update(unsigned long now) {
                 }
                 
                 // Ignore presses within the debounce window
+                unsigned long now = millis();
                 if (now - whenTriggered < DEBOUNCE_DELAY)
                 {
                         buttonState = WAITING;
@@ -53,14 +54,7 @@ void button_update(unsigned long now) {
         if (buttonState == TRIGGERED)
         {
                 // Perform the button action
-                buzzer_beep();
-                char* b = "Banana";
-                int x = -4;
-                unsigned int y = 3;
-                unsigned long z = millis();
-                build_log("c-string: %s; signed integer: %d; unsigned integer: %u; unsigned long %lu; percent literal: %%", b, x, y, z);
-                build_log("%");
-                build_log("%l");
+                client_POST("/api/bark/web", "Bark requested");
                 
                 // Go back to listening
                 buttonState = WAITING;

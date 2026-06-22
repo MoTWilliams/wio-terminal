@@ -2,6 +2,6 @@
 #define BUTTON_H
 
 void button_init(void);
-void button_update(unsigned long now);
+void button_update();
 
 #endif

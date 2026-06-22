@@ -24,15 +24,31 @@
     </head>
     <body style="background-color:aqua; margin: 0;">
         <div class="center">
+            <script>
+                function requestBeep() {
+                    fetch("/api/beep/wio", {method: "POST"});
+                }
+
+                function doBark() {
+                    const bark = new Audio("/Dog.wav");
+                    bark.play();
+                }
+
+                async function pollEvents() {
+                    const response = await fetch("/api/pending_event");
+                    const text = await response.text();
+
+                    if (text.trim() === "bark") { doBark(); }
+                }
+
+                setInterval(pollEvents, 1000);
+            </script>
+            
             <button onclick="requestBeep()" class="button">
                 ✨<i><b><b>BEEP</b></b></i>✨
             </button>
 
-            <script>
-                function requestBeep() {
-                    fetch("/api/beep", {method: "POST"});
-                }
-            </script>
+            
         </div>
     </body>
 </html>

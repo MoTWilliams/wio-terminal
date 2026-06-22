@@ -1,2 +1,10 @@
-arduino_secrets.*
+arduino_secrets.h
+
+arduino_secrets.py
 .venv/
+.env
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

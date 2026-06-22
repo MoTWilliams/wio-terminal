@@ -14,11 +14,8 @@ void setup() {
 }
 
 void loop() {
-        static unsigned long now;
-        
         server_update();
-
-        now = millis();
-        button_update(now);
-        buzzer_update(now);
+        client_update();
+        button_update();
+        buzzer_update();
 }
