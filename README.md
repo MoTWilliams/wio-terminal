@@ -1,10 +1,10 @@
 # Wio Terminal Prototypes and Labs
 
-This repository contains a collection of small prototypes, labs, and experiments built for the Seeed Studio Wio Terminal.
+This repository contains a collection of small prototypes, labs, and experiments built for the Seeed Studio Wio Terminal, written in C-style C++.
 
-Each directory in this repository is a separate prototype. The projects are not necessarily designed to build together as one large program. Instead, each folder should be treated as its own standalone experiment focused on a specific feature, sensor, display behavior, input method, or embedded programming concept.
+Each directory in this repository is a separate prototype, intended to be treated as its own standalone experiment focused on a specific feature, sensor, display behavior, input method, or embedded programming concept.
 
-These projects were developed for the Wio Terminal and were compiled and uploaded using the Arduino IDE. Other development workflows may also work, but the Arduino IDE is the workflow used and tested for these prototypes.
+These projects were developed for the Wio Terminal and were compiled and uploaded using the Arduino IDE. Other development workflows may also work, but the Arduino IDE is the workflow used and tested here.
 
 ## Repository Structure
 
@@ -29,4 +29,4 @@ Some prototypes may use only the built-in Wio Terminal hardware, while others ma
 
 ## Notes
 
-This repository is organized as a prototype collection, not as a single polished application. Some projects may be incomplete, experimental, or intended mainly as learning references.
+This repository is organized as a prototype collection, not as a single polished application. Some projects may be incomplete, experimental, or intended mainly as learning references or practice.
