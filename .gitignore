@@ -1,6 +1,7 @@
 arduino_secrets.h
 
 arduino_secrets.py
+secrets.py
 .venv/
 .env
 
