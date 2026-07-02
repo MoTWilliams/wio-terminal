@@ -1,4 +1,4 @@
-# Wio Terminal Prototypes and Labs
+# Wio Terminal Prototypes for Home Automation
 
 This repository contains a collection of small prototypes, labs, and experiments built for the Seeed Studio Wio Terminal, written in C-style C++.
 
