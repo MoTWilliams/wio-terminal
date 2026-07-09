@@ -1,6 +1,7 @@
 README.framework.md
 
 arduino_secrets.h
+secrets.h
 
 arduino_secrets.py
 secrets.py

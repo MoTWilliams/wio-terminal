@@ -92,7 +92,7 @@ void wifiStation_update(void) {
                         status = OFFLINE;
                         offlineMode = true;
                         startedWaiting = now;
-                        if (waitInterval == NORMAL_WAIT_INTERVAL 
+                        if (waitInterval == NORMAL_WAIT_INTERVAL
                                 && tries >= MAX_TRIES)
                         {
                                 waitInterval = BACKOFF_WAIT_INTERVAL;
