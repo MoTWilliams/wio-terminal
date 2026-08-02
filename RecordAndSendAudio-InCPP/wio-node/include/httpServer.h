@@ -5,41 +5,31 @@
 #include <rpcWiFi.h>
 #include "httpConnection.h"
 #include "lineBuffer.h"
-class WiFiStation;
-class ConnectionMonitor;
+
 class Recorder;
 
 class HTTPServer {
 public:
-        HTTPServer(
-                WiFiStation &station, 
-                ConnectionMonitor &monitor,
-                Recorder &recorder
-        );
+        HTTPServer();
 
         void begin();
         void update(unsigned long now);
 private:
-        WiFiStation &wifiStation;
-        ConnectionMonitor &connectionMonitor;
         WiFiServer server;
         WiFiClient client;
-
+        LineBuffer lineBuffer;
         HTTPConnection connection;
-
-        Recorder &recorder;
-
-        enum class Status : uint8_t {
+        
+        enum class Status {
                 LISTENING,
                 READING_REQUEST_LINE,
                 READING_HEADERS,
                 HANDLING_REQUEST,
-                SENDING_RESPONSE
+                SENDING_RESPONSE,
+                CLOSING_CONNECTION
         };
 
         Status status = Status::LISTENING;
-
-        LineBuffer lineBuffer;
 
         void reset();
 
@@ -50,6 +40,9 @@ private:
         void update_readingHeaders(unsigned long now);
         void update_handlingRequest(unsigned long now);
         void update_sendingResponse(unsigned long now);
+        unsigned long responseSentAt = 0;
+
+        void update_closingConnection(unsigned long now);
 };
 
 #endif

@@ -11,7 +11,7 @@ public:
         void onDisconnected();
         bool isOffline();
 private:
-        enum class Status : uint8_t { OFFLINE, SEARCHING, ONLINE };
+        enum class Status { OFFLINE, SEARCHING, ONLINE };
 
         Status status = Status::OFFLINE;
 

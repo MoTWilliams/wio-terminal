@@ -1,17 +1,10 @@
 #include <Arduino.h>
-#include "wifiStation.h"
-#include "connectionMonitor.h"
-#include "recorder.h"
+#include "systemObjects.h"
 #include "secrets.h"
 #include "httpServer.h"
 
-HTTPServer::HTTPServer(
-                WiFiStation &station,
-                ConnectionMonitor &monitor,
-                Recorder &recorder
-        ) : wifiStation(station), connectionMonitor(monitor), 
-          server(Secrets::port()), recorder(recorder), 
-          connection(connectionMonitor, client, lineBuffer) {}
+HTTPServer::HTTPServer() : server(Secrets::port()),
+        connection(client, lineBuffer) {}
 
 void HTTPServer::begin() {
         server.begin();
@@ -21,7 +14,7 @@ void HTTPServer::begin() {
 
 void HTTPServer::update(unsigned long now) {
         // No network actions if there's no connection
-        if (wifiStation.isOffline()) return;
+        if (System::wifiStation.isOffline()) return;
 
         switch (status)
         {
@@ -35,6 +28,8 @@ void HTTPServer::update(unsigned long now) {
                         update_handlingRequest(now); return;
                 case Status::SENDING_RESPONSE:
                         update_sendingResponse(now); return;
+                case Status::CLOSING_CONNECTION:
+                        update_closingConnection(now); return;
         }
 }
 
@@ -73,9 +68,9 @@ void HTTPServer::update_readingRequestLine(unsigned long now) {
         *endLine = '\0';
         endLine++;
 
-        // Store method and path (as an action)
+        // Store method and path (as an action).
         connection.setMethod(methodText);
-        connection.setAction(path);
+        System::dispatcher.setPendingAction(path);
 
         // Clear buffer and move on
         lineBuffer.clear();
@@ -84,7 +79,6 @@ void HTTPServer::update_readingRequestLine(unsigned long now) {
 
 void HTTPServer::update_readingHeaders(unsigned long now) {
         char c = '\0';
-        // if (!readChar(c)) return;
         if (!connection.readChar(c)) return;
 
         if (!connection.processChar(c))
@@ -106,16 +100,14 @@ void HTTPServer::update_readingHeaders(unsigned long now) {
 }
 
 void HTTPServer::update_handlingRequest(unsigned long now) {
-        // Eventually set a flag or something, maybe, to make this more generic
-        if (connection.recordingRequested()) recorder.startRecording(now);
+        if(!buildResponse(
+                connection.method(), System::dispatcher.pendingAction()
+        )) { reset(); return; }
 
         status = Status::SENDING_RESPONSE;
 }
 
 void HTTPServer::update_sendingResponse(unsigned long now) {
-        if(!buildResponse(
-                connection.method(), connection.action()
-        )) { reset(); return; }
 
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/plain");
@@ -125,7 +117,15 @@ void HTTPServer::update_sendingResponse(unsigned long now) {
         client.println();
         client.print(lineBuffer.c_str());
 
+        responseSentAt = now;
+        status = Status::CLOSING_CONNECTION;
+}
+
+void HTTPServer::update_closingConnection(unsigned long now) {
+        if (now - responseSentAt < 100) return;
+
         reset();
+        System::dispatcher.performPendingAction();
 }
 
 /******************************************************************************/
@@ -139,23 +139,10 @@ void HTTPServer::reset() {
 bool HTTPServer::buildResponse(const char* methodStr, const char* actionStr) {
         lineBuffer.clear();
         
-        const char *p = methodStr;
-        while (*p != '\0')
-        {
-                if (!lineBuffer.appendChar(*p)) return false;
-                p++;
-        }
+        if (!lineBuffer.append(methodStr) ||
+            !lineBuffer.append(" received (") ||
+            !lineBuffer.append(actionStr) ||
+            !lineBuffer.appendChar(')')) return false;
 
-        if (!lineBuffer.appendChar(' ')) return false;
-        if (!lineBuffer.appendChar('(')) return false;
-
-        p = actionStr;
-        while (*p != '\0')
-        {
-                if (!lineBuffer.appendChar(*p)) return false;
-                p++;
-        }
-
-        if (!lineBuffer.appendChar(')')) return false;
         return true;
 }

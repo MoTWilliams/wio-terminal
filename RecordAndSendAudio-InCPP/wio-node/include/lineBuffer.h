@@ -7,6 +7,7 @@ class LineBuffer {
 public:
         void clear();
         bool appendChar(const char c);
+        bool append(const char* text);
 
         char* data();
         const char* c_str() const;

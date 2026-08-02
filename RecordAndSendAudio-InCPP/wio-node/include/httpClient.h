@@ -4,24 +4,20 @@
 #include <WiFiClient.h>
 #include "httpConnection.h"
 #include "lineBuffer.h"
-class WiFiStation;
-class ConnectionMonitor;
 
 class HTTPClient {
 public:
-        HTTPClient(WiFiStation &station, ConnectionMonitor &monitor);
+        HTTPClient();
 
         void update(unsigned long now);
 
         bool POST(const char *path);
 private:
-        WiFiStation &wifiStation;
-        ConnectionMonitor &connectionMonitor;
         WiFiClient client;
-
+        LineBuffer lineBuffer;
         HTTPConnection connection;
 
-        enum class Status : uint8_t {
+        enum class Status {
                 IDLE,
                 CONNECTING,
                 SENDING,
@@ -31,8 +27,6 @@ private:
         };
 
         Status status = Status::IDLE;
-
-        LineBuffer lineBuffer;
 
         static constexpr size_t PATH_BUFFER_SIZE = 64 + 1;
         char path_[PATH_BUFFER_SIZE] = {0};

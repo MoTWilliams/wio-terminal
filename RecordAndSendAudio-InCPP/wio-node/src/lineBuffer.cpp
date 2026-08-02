@@ -24,6 +24,15 @@ bool LineBuffer::appendChar(const char c) {
         return true;
 }
 
+bool LineBuffer::append(const char* text) {
+        const char *text_p = text;
+
+        while (*text_p != '\0')
+                if (!appendChar(*text_p)) return false;
+        
+        return true;
+}
+
 char* LineBuffer::data() { return buffer; }
 
 const char* LineBuffer::c_str() const { return buffer; }

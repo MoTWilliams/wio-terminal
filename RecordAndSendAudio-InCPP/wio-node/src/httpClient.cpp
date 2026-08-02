@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <rpcWiFi.h>
-#include "wifiStation.h"
-#include "connectionMonitor.h"
+#include "systemObjects.h"
 #include "secrets.h"
 #include "HTTPClient.h"
 
@@ -11,12 +10,10 @@ namespace {
         constexpr unsigned long RESPONSE_WAIT_TIMEOUT = 3000;
 }
 
-HTTPClient::HTTPClient(WiFiStation &station, ConnectionMonitor &monitor) 
-        : wifiStation(station), connectionMonitor(monitor),
-          connection(connectionMonitor, client, lineBuffer) {}
+HTTPClient::HTTPClient() : connection(client, lineBuffer) {}
 
 bool HTTPClient::POST(const char *path) {
-        if (wifiStation.isOffline()) return false;
+        if (System::wifiStation.isOffline()) return false;
         if (status != Status::IDLE)
         {
                 Serial.println("HTTPClient busy; POST ignored");
@@ -26,7 +23,7 @@ bool HTTPClient::POST(const char *path) {
         snprintf(path_, PATH_BUFFER_SIZE, "%s", path);
 
         connection.setMethod("POST");
-        connection.setAction(path);
+        // System::dispatcher.setPendingAction(path);
         status = Status::CONNECTING;
 
         return true;
@@ -36,7 +33,7 @@ bool HTTPClient::POST(const char *path) {
 
 void HTTPClient::update(unsigned long now) {
         // No network actions if there's no connection
-        if (wifiStation.isOffline()) return;
+        if (System::wifiStation.isOffline()) return;
 
         switch (status)
         {
@@ -51,6 +48,7 @@ void HTTPClient::update(unsigned long now) {
                         update_readingResponseHeader(now); return;
                 case Status::READING_RESPONSE_BODY:
                         update_readingResponseBody(now); return;
+                
         }
 }
 
@@ -72,7 +70,8 @@ void HTTPClient::update_connecting(unsigned long now) {
 }
 
 void HTTPClient::update_sending(unsigned long now) {
-        if (!connectionMonitor.checkConnection(client)) { reset(); return; }
+        if (!System::connectionMonitor.checkConnection(client))
+                { reset(); return; }
 
         // Send POST /recording/stopped with no body
         client.printf("%s %s HTTP/1.1\r\n",connection.method(), path_);
@@ -91,7 +90,7 @@ void HTTPClient::update_sending(unsigned long now) {
 }
 
 void HTTPClient::update_waitingForResponse(unsigned long now) {
-        if (!connectionMonitor.checkConnection(client))
+        if (!System::connectionMonitor.checkConnection(client))
                 { reset(); return; }
         
         // Check continuously for bytes to read

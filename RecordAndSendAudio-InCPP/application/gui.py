@@ -12,7 +12,7 @@ finished_recording = False
 
 def start_recording():
     try:
-        response = post(f"{p.WIO_URL}record/start", timeout=2)
+        response = post(f"{p.WIO_URL}recorder/start", timeout=2)
         print("Wio response:", response.text)
         button.config(text="Recording...")
     except RequestException as error:

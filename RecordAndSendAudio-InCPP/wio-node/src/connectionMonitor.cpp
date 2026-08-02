@@ -1,15 +1,14 @@
 #include <Arduino.h>
 #include <rpcWiFi.h>
 #include <WiFiClient.h>
+#include "systemObjects.h"
 #include "connectionMonitor.h"
-#include "wifiStation.h"
 
 namespace {
         constexpr unsigned long TIMEOUT = 3000;
 }
 
-ConnectionMonitor::ConnectionMonitor(WiFiStation &station)
-                : wifiStation(station) {}
+ConnectionMonitor::ConnectionMonitor() {}
 
 bool ConnectionMonitor::checkConnection(WiFiClient &client) {
         if (!client.connected()) { handleConnectionLost(); return false; }
@@ -27,5 +26,5 @@ bool ConnectionMonitor::checkConnection(
 }
 
 void ConnectionMonitor::handleConnectionLost() {
-        if (WiFi.status() != WL_CONNECTED) wifiStation.onDisconnected();
+        if (WiFi.status() != WL_CONNECTED) System::wifiStation.onDisconnected();
 }

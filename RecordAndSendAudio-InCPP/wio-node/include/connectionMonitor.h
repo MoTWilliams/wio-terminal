@@ -2,11 +2,10 @@
 #define CONNECTION_MONITOR_H
 
 #include <WiFiClient.h>
-class WiFiStation;
 
 class ConnectionMonitor {
 public:
-        ConnectionMonitor(WiFiStation &station);
+        ConnectionMonitor();
 
         /* Reset connection if this fails */
         bool checkConnection(WiFiClient &client);
@@ -16,8 +15,6 @@ public:
 
         /* Reset connection before calling this */
         void handleConnectionLost();
-private:
-        WiFiStation &wifiStation;
 };
 
 #endif

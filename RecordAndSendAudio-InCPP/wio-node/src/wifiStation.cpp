@@ -1,7 +1,9 @@
+#include <Arduino.h>
 #include <rpcWiFi.h>
 #include <WiFiClient.h>
-#include "wifiStation.h"
 #include "secrets.h"
+#include "wifiStation.h"
+
 
 namespace {
         constexpr unsigned long TIMEOUT = 10000;
@@ -69,7 +71,7 @@ void WiFiStation::update_searching(unsigned long now) {
         tries = 0;
 
         IPAddress ip = WiFi.localIP();
-        Serial.printf("Connected--IP Address: %u.%u.%u.%u\n", 
+        if (Serial) Serial.printf("Connected--IP Address: %u.%u.%u.%u\n", 
                 ip[0], ip[1], ip[2], ip[3]);
 }
 
