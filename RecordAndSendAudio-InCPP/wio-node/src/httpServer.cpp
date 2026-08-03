@@ -28,8 +28,6 @@ void HTTPServer::update(unsigned long now) {
                         update_handlingRequest(now); return;
                 case Status::SENDING_RESPONSE:
                         update_sendingResponse(now); return;
-                case Status::CLOSING_CONNECTION:
-                        update_closingConnection(now); return;
         }
 }
 
@@ -123,15 +121,6 @@ void HTTPServer::update_sendingResponse(unsigned long now) {
         client.println("Connection: close");
         client.println();
         client.print(lineBuffer.c_str());
-
-        responseSentAt = now;
-        status = Status::CLOSING_CONNECTION;
-}
-
-void HTTPServer::update_closingConnection(unsigned long now) {
-        Serial.println("[HTTPServer] CLOSING CONNECTION");
-        
-        if (now - responseSentAt < 1000) return;
 
         reset();
         System::dispatcher.performPendingAction();

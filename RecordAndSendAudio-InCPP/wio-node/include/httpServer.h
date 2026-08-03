@@ -25,8 +25,7 @@ private:
                 READING_REQUEST_LINE,
                 READING_HEADERS,
                 HANDLING_REQUEST,
-                SENDING_RESPONSE,
-                CLOSING_CONNECTION
+                SENDING_RESPONSE
         };
 
         Status status = Status::LISTENING;
@@ -40,9 +39,6 @@ private:
         void update_readingHeaders(unsigned long now);
         void update_handlingRequest(unsigned long now);
         void update_sendingResponse(unsigned long now);
-        unsigned long responseSentAt = 0;
-
-        void update_closingConnection(unsigned long now);
 };
 
 #endif
