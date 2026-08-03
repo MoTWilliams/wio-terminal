@@ -25,10 +25,8 @@ bool LineBuffer::appendChar(const char c) {
 }
 
 bool LineBuffer::append(const char* text) {
-        const char *text_p = text;
-
-        while (*text_p != '\0')
-                if (!appendChar(*text_p)) return false;
+        while (*text != '\0')
+                if (!appendChar(*text++)) return false;
         
         return true;
 }
