@@ -40,7 +40,7 @@ void HTTPServer::update_listening(unsigned long now) {
 }
 
 void HTTPServer::update_readingRequestLine(unsigned long now) {
-        Serial.println("[HTTPServer] READING REQUEST LINE");
+        // Serial.println("[HTTPServer] READING REQUEST LINE");
         
         char c = '\0';
         if (!connection.readChar(c)) return;
@@ -78,7 +78,7 @@ void HTTPServer::update_readingRequestLine(unsigned long now) {
 }
 
 void HTTPServer::update_readingHeaders(unsigned long now) {
-        Serial.println("[HTTPServer] READING HEADERS");
+        // Serial.println("[HTTPServer] READING HEADERS");
         
         char c = '\0';
         if (!connection.readChar(c)) return;
@@ -102,7 +102,7 @@ void HTTPServer::update_readingHeaders(unsigned long now) {
 }
 
 void HTTPServer::update_handlingRequest(unsigned long now) {
-        Serial.println("[HTTPServer] HANDLING REQUEST");
+        // Serial.println("[HTTPServer] HANDLING REQUEST");
         
         if(!buildResponse(
                 connection.method(), System::dispatcher.pendingAction()
@@ -112,7 +112,7 @@ void HTTPServer::update_handlingRequest(unsigned long now) {
 }
 
 void HTTPServer::update_sendingResponse(unsigned long now) {
-        Serial.println("[HTTPServer] SENDING RESPONSE");
+        // Serial.println("[HTTPServer] SENDING RESPONSE");
 
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: text/plain");
@@ -129,9 +129,9 @@ void HTTPServer::update_sendingResponse(unsigned long now) {
 /******************************************************************************/
 
 void HTTPServer::reset() {
-        Serial.println("[HTTPServer] RESETTING");
+        // Serial.println("[HTTPServer] RESETTING");
         connection.reset();
-        Serial.println("[HTTPServer] DONE RESETTING");
+        // Serial.println("[HTTPServer] DONE RESETTING");
 
         status = Status::LISTENING;
 }

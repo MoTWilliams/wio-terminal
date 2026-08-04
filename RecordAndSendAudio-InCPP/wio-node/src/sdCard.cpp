@@ -2,6 +2,7 @@
 
 namespace {
         constexpr char const* TEST_FILE = "test.txt";
+        constexpr char const* BACKUP_FILE = "~test.txt";
 }
 
 SDCard::SDCard() {}
@@ -19,7 +20,13 @@ void SDCard::begin() {
 
 
 bool SDCard::file_create() {
-        file = SD.open(TEST_FILE, FILE_APPEND);
+        if (!file_rotate())
+        {
+                Serial.printf("File rotation failed");
+                return false;
+        }
+        
+        file = SD.open(TEST_FILE, FILE_WRITE);
 
         if (!file) { Serial.println("Error opening test.txt"); return false; }
 
@@ -97,9 +104,16 @@ bool SDCard::file_appendln() {
 
 void SDCard::file_finishWriting() {
         file.close();
+        status = Status::IDLE;
 }
 
 void SDCard::file_printContents() {
+        if (status != Status::IDLE)
+        {
+                Serial.println("Print file failed. SD card busy");
+                return;
+        }
+        
         file = SD.open(TEST_FILE, FILE_READ);
 
         if (!file) { Serial.println("Error opening test.txt"); return; }
@@ -109,7 +123,46 @@ void SDCard::file_printContents() {
         Serial.printf("--- begin %s ---\n", file.name());
         while (file.available()) Serial.write(file.read());
         file.close();
-        Serial.printf("--- begin %s ---\n", file.name());
+        Serial.printf("--- end %s ---\n", file.name());
 
         status = Status::IDLE;
+}
+
+bool SDCard::file_rename(const char* oldName, const char* newName) {
+        // Backup file won't exist on the first rotation. That's okay
+        if (!SD.exists(oldName)) return true;
+
+        if (SD.rename(oldName, newName)) return true;
+
+        // Rename failed
+        Serial.printf("Failed to rename %s to %s", oldName, newName);
+        return false;
+}
+
+bool SDCard::file_delete(const char* fileName) {
+        // File won't exist on the first rotation. That's okay
+        if (!SD.exists(fileName)) return true;
+
+        if (SD.remove(fileName)) return true;
+
+        // Remove failed
+        Serial.printf("Failed to delete %s\n", fileName);
+        return false;
+}
+
+bool SDCard::file_rotate() {
+        if (!file_delete(BACKUP_FILE))
+        {
+                Serial.println("Failed to delete old backup");
+                return false;
+        }
+
+        if (!file_rename(TEST_FILE, BACKUP_FILE))
+        {
+                Serial.println("Failed to rename existing file");
+                return false;
+        }
+
+        Serial.printf("Renamed %s to %s\n", TEST_FILE, BACKUP_FILE);
+        return true;
 }

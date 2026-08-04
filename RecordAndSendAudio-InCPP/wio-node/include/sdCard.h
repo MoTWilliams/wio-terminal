@@ -11,7 +11,6 @@ public:
         SDCard();
 
         void begin();
-        // void update(unsigned long now);
 
         bool file_create();
         
@@ -24,15 +23,18 @@ public:
         void file_finishWriting();
 
         void file_printContents();
+
+        
 private:
         enum class Status { IDLE, WRITING, READING, FINISHING };
 
         Status status = Status::IDLE;
         File file;
 
-        // void update_writing(unsigned long now);
-        // void update_reading(unsigned long now);
-        // void update_finishing(unsigned long now);
+        bool file_rename(const char* oldName, const char* newName);
+        bool file_delete(const char* fileName);
+
+        bool file_rotate();
 };
 
 #endif
