@@ -14,13 +14,13 @@ void setup() {
 }
 
 void loop() {
-        unsigned long now = millis();
+        System::now = millis();
         
-        System::wifiStation.update(now);
-        System::httpServer.update(now);
-        System::httpClient.update(now);
+        System::wifiStation.update();
+        System::httpServer.update();
+        System::httpClient.update();
 
-        System::dispatcher.update(now);
+        System::dispatcher.update();
 
-        System::recorder.update(now);
+        System::recorder.update();
 }

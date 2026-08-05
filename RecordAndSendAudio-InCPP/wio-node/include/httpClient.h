@@ -9,9 +9,14 @@ class HTTPClient {
 public:
         HTTPClient();
 
-        void update(unsigned long now);
+        void update();
 
         bool POST(const char *path);
+
+        // This can also be used to transmit, for example, a log file
+        bool POST(const char *path, const char *fileName);
+
+        bool isBusy();
 private:
         WiFiClient client;
         LineBuffer lineBuffer;
@@ -21,6 +26,8 @@ private:
                 IDLE,
                 CONNECTING,
                 SENDING,
+                SENDING_HEADERS,
+                SENDING_BODY,
                 WAITING_FOR_RESPONSE,
                 READING_RESPONSE_HEADER,
                 READING_RESPONSE_BODY
@@ -38,11 +45,13 @@ private:
 
         void reset();
 
-        void update_connecting(unsigned long now);
-        void update_sending(unsigned long now);
-        void update_waitingForResponse(unsigned long now);
-        void update_readingResponseHeader(unsigned long now);
-        void update_readingResponseBody(unsigned long now);
+        void update_connecting();
+        void update_sending();
+        void update_sendingHeaders();
+        void update_sendingBody();
+        void update_waitingForResponse();
+        void update_readingResponseHeader();
+        void update_readingResponseBody();
 };
 
 #endif

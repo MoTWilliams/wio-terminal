@@ -10,6 +10,8 @@
 #include "recorder.h"
 
 namespace System {
+        extern unsigned long now;
+        
         extern WiFiStation wifiStation;
         extern ConnectionMonitor connectionMonitor;
         extern Dispatcher dispatcher;

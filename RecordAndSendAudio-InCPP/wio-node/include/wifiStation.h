@@ -6,7 +6,7 @@ public:
         WiFiStation();
         
         void begin();
-        void update(unsigned long now);
+        void update();
         
         void onDisconnected();
         bool isOffline();
@@ -21,9 +21,9 @@ private:
         unsigned long startedWaiting = 0;
         int tries = 0;
 
-        void update_offline(unsigned long now);
-        void update_searching(unsigned long now);
-        void update_online(unsigned long now);
+        void update_offline();
+        void update_searching();
+        void update_online();
 };
 
 #endif

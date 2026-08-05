@@ -12,26 +12,26 @@ void HTTPServer::begin() {
 
 /******************************************************************************/
 
-void HTTPServer::update(unsigned long now) {
+void HTTPServer::update() {
         // No network actions if there's no connection
         if (System::wifiStation.isOffline()) return;
 
         switch (status)
         {
                 case Status::LISTENING: 
-                        update_listening(now); return;
+                        update_listening(); return;
                 case Status::READING_REQUEST_LINE:
-                        update_readingRequestLine(now); return;
+                        update_readingRequestLine(); return;
                 case Status::READING_HEADERS:
-                        update_readingHeaders(now); return;
+                        update_readingHeaders(); return;
                 case Status::HANDLING_REQUEST:
-                        update_handlingRequest(now); return;
+                        update_handlingRequest(); return;
                 case Status::SENDING_RESPONSE:
-                        update_sendingResponse(now); return;
+                        update_sendingResponse(); return;
         }
 }
 
-void HTTPServer::update_listening(unsigned long now) {
+void HTTPServer::update_listening() {
         client = server.available();
         if (!client) return;    // No bytes to read
 
@@ -39,7 +39,7 @@ void HTTPServer::update_listening(unsigned long now) {
         status = Status::READING_REQUEST_LINE;
 }
 
-void HTTPServer::update_readingRequestLine(unsigned long now) {
+void HTTPServer::update_readingRequestLine() {
         // Serial.println("[HTTPServer] READING REQUEST LINE");
         
         char c = '\0';
@@ -77,7 +77,7 @@ void HTTPServer::update_readingRequestLine(unsigned long now) {
         status = Status::READING_HEADERS;
 }
 
-void HTTPServer::update_readingHeaders(unsigned long now) {
+void HTTPServer::update_readingHeaders() {
         // Serial.println("[HTTPServer] READING HEADERS");
         
         char c = '\0';
@@ -101,7 +101,7 @@ void HTTPServer::update_readingHeaders(unsigned long now) {
         lineBuffer.clear();
 }
 
-void HTTPServer::update_handlingRequest(unsigned long now) {
+void HTTPServer::update_handlingRequest() {
         // Serial.println("[HTTPServer] HANDLING REQUEST");
         
         if(!buildResponse(
@@ -111,7 +111,7 @@ void HTTPServer::update_handlingRequest(unsigned long now) {
         status = Status::SENDING_RESPONSE;
 }
 
-void HTTPServer::update_sendingResponse(unsigned long now) {
+void HTTPServer::update_sendingResponse() {
         // Serial.println("[HTTPServer] SENDING RESPONSE");
 
         client.println("HTTP/1.1 200 OK");

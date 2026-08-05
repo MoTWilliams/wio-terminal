@@ -23,15 +23,18 @@ bool HTTPClient::POST(const char *path) {
         snprintf(path_, PATH_BUFFER_SIZE, "%s", path);
 
         connection.setMethod("POST");
-        // System::dispatcher.setPendingAction(path);
         status = Status::CONNECTING;
 
         return true;
 }
 
+bool HTTPClient::isBusy() {
+        return status != Status::IDLE;
+}
+
 /******************************************************************************/
 
-void HTTPClient::update(unsigned long now) {
+void HTTPClient::update() {
         // No network actions if there's no connection
         if (System::wifiStation.isOffline()) return;
 
@@ -39,24 +42,24 @@ void HTTPClient::update(unsigned long now) {
         {
                 case Status::IDLE: return;
                 case Status::CONNECTING:
-                        update_connecting(now); return;
+                        update_connecting(); return;
                 case Status::SENDING:
-                        update_sending(now); return;
+                        update_sending(); return;
                 case Status::WAITING_FOR_RESPONSE:
-                        update_waitingForResponse(now); return;
+                        update_waitingForResponse(); return;
                 case Status::READING_RESPONSE_HEADER:
-                        update_readingResponseHeader(now); return;
+                        update_readingResponseHeader(); return;
                 case Status::READING_RESPONSE_BODY:
-                        update_readingResponseBody(now); return;
+                        update_readingResponseBody(); return;
                 
         }
 }
 
-void HTTPClient::update_connecting(unsigned long now) {
+void HTTPClient::update_connecting() {
         if (tries == 0 || 
-            (tries < MAX_TRIES && now - lastChecked >= RETRY_INTERVAL))
+            (tries < MAX_TRIES && System::now - lastChecked >= RETRY_INTERVAL))
         {
-                lastChecked = now;
+                lastChecked = System::now;
                 if (!client.connect(Secrets::host(), Secrets::port())) tries++;
                 else { tries = 0; status = Status::SENDING; }
                 return;
@@ -69,7 +72,8 @@ void HTTPClient::update_connecting(unsigned long now) {
         status = Status::IDLE;
 }
 
-void HTTPClient::update_sending(unsigned long now) {
+// TODO: Split this state into headers and body, and handle nonempty POST
+void HTTPClient::update_sending() {
         if (!System::connectionMonitor.checkConnection(client))
                 { reset(); return; }
 
@@ -85,11 +89,19 @@ void HTTPClient::update_sending(unsigned long now) {
 
         // Sent. Ensure buffer is empty
         lineBuffer.clear();
-        responseWaitStarted = now;
+        responseWaitStarted = System::now;
         status = Status::WAITING_FOR_RESPONSE;
 }
 
-void HTTPClient::update_waitingForResponse(unsigned long now) {
+void HTTPClient::update_sendingHeaders() {
+
+}
+
+void HTTPClient::update_sendingBody() {
+
+}
+
+void HTTPClient::update_waitingForResponse() {
         if (!System::connectionMonitor.checkConnection(client))
                 { reset(); return; }
         
@@ -100,13 +112,13 @@ void HTTPClient::update_waitingForResponse(unsigned long now) {
                 status = Status::READING_RESPONSE_HEADER;
                 return;
         }
-        if (now - responseWaitStarted < RESPONSE_WAIT_TIMEOUT) return;
+        if (System::now - responseWaitStarted < RESPONSE_WAIT_TIMEOUT) return;
 
         // Give up and reset after 3 seconds (later, add to retry queue)
         reset();
 }
 
-void HTTPClient::update_readingResponseHeader(unsigned long now) {
+void HTTPClient::update_readingResponseHeader() {
         char c = '\0';
         if (!connection.readChar(c)) return;
 
@@ -139,7 +151,7 @@ void HTTPClient::update_readingResponseHeader(unsigned long now) {
         lineBuffer.clear();
 }
 
-void HTTPClient::update_readingResponseBody(unsigned long now) {
+void HTTPClient::update_readingResponseBody() {
         // If something breaks, I'll add a print statement here. For now, just
         // discard the response body
         if (lineBuffer.length() >= bytesToRead)

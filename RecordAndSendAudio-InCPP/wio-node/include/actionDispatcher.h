@@ -26,7 +26,9 @@ public:
                 UNKNOWN
         };
 
-        void update(unsigned long now);
+        void update();
+
+        bool performImmediateAction(const char* path);
 
         bool setPendingAction(const char* path);
         bool performPendingAction();
@@ -37,6 +39,9 @@ private:
         enum class Status { IDLE, PENDING, DISPATCHING };
 
         Status status = Status::IDLE;
+
+        bool selectAction(const char* path);
+        bool performAction();
 };
 
 #endif

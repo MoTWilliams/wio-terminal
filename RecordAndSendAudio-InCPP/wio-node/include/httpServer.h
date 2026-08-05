@@ -13,7 +13,7 @@ public:
         HTTPServer();
 
         void begin();
-        void update(unsigned long now);
+        void update();
 private:
         WiFiServer server;
         WiFiClient client;
@@ -34,11 +34,11 @@ private:
 
         bool buildResponse(const char* method, const char* action);
 
-        void update_listening(unsigned long now);
-        void update_readingRequestLine(unsigned long now);
-        void update_readingHeaders(unsigned long now);
-        void update_handlingRequest(unsigned long now);
-        void update_sendingResponse(unsigned long now);
+        void update_listening();
+        void update_readingRequestLine();
+        void update_readingHeaders();
+        void update_handlingRequest();
+        void update_sendingResponse();
 };
 
 #endif

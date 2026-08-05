@@ -4,34 +4,14 @@
 
 namespace {}
 
-/**************************************************************************** */
+/******************************************************************************/
 
-void Dispatcher::update(unsigned long now) {
-        if (status != Status::DISPATCHING) return;
-        
-        if (pendingAction_ == Action::NONE) return;
-        
-        switch (pendingAction_)
+bool Dispatcher::selectAction(const char* path) {
+        if (pendingAction_ != Action::NONE) 
         {
-                case Action::START_RECORDING:
-                        System::recorder.startRecording(now); break;
-                case Action::NOTIFY_STOPPED:
-                        System::httpClient.POST(PATH_RECORDING_DONE); break;
-                case Action::SEND_FILE:
-                        // We'll figure  out how to attach the file eventually
-                        System::httpClient.POST(PATH_SEND_FILE); break;
-                default:
-                        Serial.println("Action not supported"); break;
+                Serial.println("Action not NONE. Cannot select action");
+                return false;
         }
-
-        pendingAction_ = Action::NONE;
-        status = Status::IDLE;
-}
-
-/**************************************************************************** */
-
-bool Dispatcher::setPendingAction(const char* path) {
-        if (pendingAction_ != Action::NONE) return false;
 
         if (!strcmp(path, PATH_START_RECORDING))
                 pendingAction_ = Action::START_RECORDING;
@@ -41,8 +21,66 @@ bool Dispatcher::setPendingAction(const char* path) {
                 pendingAction_ = Action::SEND_FILE;
         else pendingAction_ = Action::UNKNOWN;
 
-        status = Status::PENDING;
+        return true;
+}
+
+bool Dispatcher::performAction() {
+        if (pendingAction_ == Action::NONE) return false;
+
+        switch (pendingAction_)
+        {
+                case Action::START_RECORDING:
+                        return System::recorder.startRecording();
+                case Action::NOTIFY_STOPPED:
+                        return System::httpClient.POST(PATH_RECORDING_DONE);
+                case Action::SEND_FILE:
+                        // We'll figure  out how to attach the file eventually
+                        return System::httpClient.POST(PATH_SEND_FILE);
+                default:
+                        Serial.println("Action not supported"); return false;
+        }
+}
+
+/**************************************************************************** */
+
+void Dispatcher::update() {
+        if (status != Status::DISPATCHING) return;
         
+        if (!performAction())
+        {
+                Serial.println("Dispatcher action failed");
+        }
+
+        pendingAction_ = Action::NONE;
+        status = Status::IDLE;
+}
+
+/**************************************************************************** */
+
+bool Dispatcher::performImmediateAction(const char* path) {
+        if (status != Status::IDLE)
+        {
+                Serial.println("No action performed. Dispatcher busy");
+                return false;
+        }
+
+        if (!selectAction(path)) return false;
+        if (!performAction()) return false;
+        
+        pendingAction_ = Action::NONE;
+        return true;
+}
+
+bool Dispatcher::setPendingAction(const char* path) {
+        if (status != Status::IDLE)
+        {
+                Serial.println("No pending action selected. Dispatcher busy");
+                return false;
+        }
+
+        if (!selectAction(path)) return false;
+        
+        status = Status::PENDING;
         return true;
 }
 

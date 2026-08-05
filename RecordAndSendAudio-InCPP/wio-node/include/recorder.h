@@ -6,17 +6,18 @@ public:
         Recorder();
 
         void begin();
-        void update(unsigned long now);
+        void update();
 
-        void startRecording(unsigned long now);
+        bool startRecording();
 private:
-        enum class Status { IDLE, RECORDING, FINISHING };
+        enum class Status { IDLE, RECORDING, RECORDING_DONE, SENDING_FILE };
 
         Status status = Status::IDLE;
         unsigned long started = 0;
 
-        void update_recording(unsigned long now);
-        void update_finishing(unsigned long now);
+        void update_recording();
+        void update_recordingDone();
+        void update_sendingFile();
 };
 
 #endif

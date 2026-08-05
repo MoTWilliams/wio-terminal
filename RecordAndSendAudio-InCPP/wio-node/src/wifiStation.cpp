@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <rpcWiFi.h>
 #include <WiFiClient.h>
+#include "systemObjects.h"
 #include "secrets.h"
 #include "wifiStation.h"
 
@@ -22,23 +23,23 @@ void WiFiStation::begin() {
 
 /******************************************************************************/
 
-void WiFiStation::update(unsigned long now) {
+void WiFiStation::update() {
         switch (status)
         {
-                case Status::OFFLINE: update_offline(now); return;
-                case Status::SEARCHING: update_searching(now); return;
-                case Status::ONLINE: update_online(now); return;
+                case Status::OFFLINE: update_offline(); return;
+                case Status::SEARCHING: update_searching(); return;
+                case Status::ONLINE: update_online(); return;
         }
 }
 
-void WiFiStation::update_offline(unsigned long now) {
+void WiFiStation::update_offline() {
         // Wait to try again
-        if (now - startedWaiting < waitInterval) return;
+        if (System::now - startedWaiting < waitInterval) return;
 
         // Attempt the connection again
         WiFi.begin(Secrets::ssid(), Secrets::password());
-        startedChecking = now;
-        lastChecked = now;
+        startedChecking = System::now;
+        lastChecked = System::now;
 
         // Try three times, then back off
         if (waitInterval == NORMAL_WAIT_INTERVAL) tries++;
@@ -47,12 +48,12 @@ void WiFiStation::update_offline(unsigned long now) {
         status = Status::SEARCHING;
 }
 
-void WiFiStation::update_searching(unsigned long now) {
+void WiFiStation::update_searching() {
         // Stop checking and start waiting after 10 seconds
-        if (now - startedChecking >= TIMEOUT)
+        if (System::now - startedChecking >= TIMEOUT)
         {
                 status = Status::OFFLINE;
-                startedWaiting = now;
+                startedWaiting = System::now;
                 if (waitInterval == NORMAL_WAIT_INTERVAL && tries >= MAX_TRIES)
                 {
                         waitInterval = BACKOFF_WAIT_INTERVAL;
@@ -62,8 +63,8 @@ void WiFiStation::update_searching(unsigned long now) {
         }
 
         // Only check after check interval
-        if (now - lastChecked < CHECK_INTERVAL) return;
-        if (WiFi.status() != WL_CONNECTED) { lastChecked = now; return; }
+        if (System::now - lastChecked < CHECK_INTERVAL) return;
+        if (WiFi.status() != WL_CONNECTED) { lastChecked = System::now;return; }
 
         // Connection found
         status = Status::ONLINE;
@@ -75,7 +76,7 @@ void WiFiStation::update_searching(unsigned long now) {
                 ip[0], ip[1], ip[2], ip[3]);
 }
 
-void WiFiStation::update_online(unsigned long now) {
+void WiFiStation::update_online() {
         if (WiFi.status() != WL_CONNECTED) onDisconnected();
 }
 

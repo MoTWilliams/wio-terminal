@@ -15,17 +15,18 @@ void Recorder::begin() {}
 
 /******************************************************************************/
 
-void Recorder::update(unsigned long now) {
+void Recorder::update() {
         switch (status)
         {
                 case Status::IDLE: return;
-                case Status::RECORDING: update_recording(now); return;
-                case Status::FINISHING: update_finishing(now); return;
+                case Status::RECORDING: update_recording(); return;
+                case Status::RECORDING_DONE: update_recordingDone(); return;
+                case Status::SENDING_FILE: update_sendingFile(); return;
         }
 }
 
-void Recorder::update_recording(unsigned long now) {
-        unsigned long elapsed = now - started;
+void Recorder::update_recording() {
+        unsigned long elapsed = System::now - started;
         static int count = 1;
         
         // "Recording" complete
@@ -34,8 +35,10 @@ void Recorder::update_recording(unsigned long now) {
                 Serial.printf("Recorded %d seconds", elapsed);
                 Serial.println();
 
+                // TODO: Then set pending dispatcher action to send the file
+
                 count = 1;
-                status = Status::FINISHING;
+                status = Status::RECORDING_DONE;
                 return;
         }
 
@@ -51,29 +54,45 @@ void Recorder::update_recording(unsigned long now) {
         }
 
         count++;
-        started = now;
+        started = System::now;
 }
 
-void Recorder::update_finishing(unsigned long now) {
-        if (!System::httpClient.POST(Dispatcher::PATH_RECORDING_DONE))
-                // Reset and return
-                { status = Status::IDLE; return; }
-        
+void Recorder::update_recordingDone() {
         System::sdCard.file_finishWriting();
         System::sdCard.file_printContents();
+        
+        if (!System::dispatcher.performImmediateAction(
+                Dispatcher::PATH_RECORDING_DONE)) return;
+        
+        status = Status::SENDING_FILE;
+}
+
+void Recorder::update_sendingFile() {
+        if (System::httpClient.isBusy()) return;
+        if (!System::dispatcher.performImmediateAction(
+                Dispatcher::PATH_SEND_FILE)) return;
         
         status = Status::IDLE;
 }
 
 /******************************************************************************/
 
-void Recorder::startRecording(unsigned long now) {
-        if (status != Status::IDLE) return;
+bool Recorder::startRecording() {
+        if (status != Status::IDLE) 
+        {
+                Serial.println("Unable to start new recording. Recorder busy");
+                return false;
+        }
         
         Serial.println("Recording started");
         
-        if (!System::sdCard.file_create()) { status = Status::IDLE; return; }
-        started = now;
-
+        if (!System::sdCard.file_create())
+        {
+                status = Status::IDLE;
+                return false;
+        }
+        
+        started = System::now;
         status = Status::RECORDING;
+        return true;
 }
