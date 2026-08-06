@@ -1,10 +1,5 @@
 #include "sdCard.h"
 
-namespace {
-        constexpr char const* TEST_FILE = "test.txt";
-        constexpr char const* BACKUP_FILE = "~test.txt";
-}
-
 SDCard::SDCard() {}
 
 void SDCard::begin() {
@@ -15,26 +10,91 @@ void SDCard::begin() {
                 Serial.println("SD initialization failed");
                 while(true);
         }
+        
+
+        if (!SD.exists("/recordings")) {
+                if (!SD.mkdir("/recordings")) {
+                        Serial.println("Failed to create /recordings");
+                        while (true);
+                }
+
+                Serial.println("Created /recordings directory");
+        }
+        Serial.println("/recordings directory found");
+
+        if (!SD.exists("/logs")) {
+                if (!SD.mkdir("/logs")) {
+                        Serial.println("Failed to create /logs directory");
+                        while (true);
+                }
+
+                Serial.println("Created /logs directory");
+        }
+        Serial.println("/logs directory found");
+
         Serial.println("SD card ready");
 }
 
 
-bool SDCard::file_create() {
+bool buildPath(char* buffer, const char* dir, const char* name) {
+        buffer[0] = '\0';
+        
+        size_t dirLen = strlen(dir);
+        size_t nameLen = strlen(name);
+        
+        size_t pathLen = dirLen + nameLen;
+        if (pathLen > Paths::MAX_PATH_LEN)
+        {
+                Serial.println("SDCard: path too long");
+                return false;
+        }
+
+        size_t written = snprintf(
+                buffer, Paths::PATH_BUFFER_SIZE, "%s", dir);
+        if (written != dirLen) { buffer[0] = '\0'; return false; }
+
+        written = snprintf(
+                buffer + dirLen,
+                Paths::PATH_BUFFER_SIZE - dirLen, 
+                "%s", name
+        );
+        if (written != nameLen) { buffer[0] = '\0'; return false; }
+
+        return true;
+}
+
+// Probably need this for sending the log file
+void SDCard::file_selectSet(const FileSet* fileSet) {
+        set = fileSet;
+}
+
+/****************************************************************************** 
+ *                                   WRITE                                    *
+ ******************************************************************************/
+
+bool SDCard::file_create(const FileSet* fileSet) {
+        set = fileSet;
+        
         if (!file_rotate())
         {
                 Serial.printf("File rotation failed");
                 return false;
         }
         
-        file = SD.open(TEST_FILE, FILE_WRITE);
+        char current_[Paths::PATH_BUFFER_SIZE] = {0};
+        if (!buildPath(current_, set->dir, set->current)) return false;
+        
+        file = SD.open(current_, FILE_WRITE);
 
-        if (!file) { Serial.println("Error opening test.txt"); return false; }
+        if (!file) 
+        {
+                Serial.printf("Error opening %s\n", current_);
+                return false;
+        }
 
         status = Status::WRITING;
-
         return true;
-} 
-
+}
 
 bool SDCard::file_append(const char* data) {
         if (status != Status::WRITING)
@@ -101,32 +161,98 @@ bool SDCard::file_appendln() {
         return true;
 }
 
+/****************************************************************************** 
+ *                                    READ                                    *
+ ******************************************************************************/
 
-void SDCard::file_finishWriting() {
-        file.close();
-        status = Status::IDLE;
+// Opens "current" of the active FileSet (recording or log). May eventually
+// (or in another iteration) generalize this to select current or backup
+bool SDCard::file_openToRead() {
+        char current_[Paths::PATH_BUFFER_SIZE] = {0};
+        if (!buildPath(current_, set->dir, set->current)) return false;
+
+        file = SD.open(current_, FILE_READ);
+
+        if (!file) 
+        {
+                Serial.printf("Error opening %s\n", current_);
+                return false;
+        }
+
+        status = Status::READING;
+        return true;
 }
 
-void SDCard::file_printContents() {
-        if (status != Status::IDLE)
+// This only prints "current" of the active FileSet. It can eventually be 
+// refactored to retrieve a file by name, but I'll do that later
+bool SDCard::file_printContents() {
+        if (status != Status::READING)
         {
-                Serial.println("Print file failed. SD card busy");
-                return;
+                Serial.printf("Error reading from %s. ", set->current);
+                Serial.println("SD not in READING mode");
+                status = Status::IDLE;
+                return false;
         }
-        
-        file = SD.open(TEST_FILE, FILE_READ);
-
-        if (!file) { Serial.println("Error opening test.txt"); return; }
-        
-        status = Status::READING;
 
         Serial.printf("--- begin %s ---\n", file.name());
         while (file.available()) Serial.write(file.read());
         file.close();
         Serial.printf("--- end %s ---\n", file.name());
+        return true;
+}
 
+size_t SDCard::file_size() {
+        if (status == Status::READING) return file.size();
+        
+        if (status == Status::WRITING)
+        {
+                file.flush();
+                return file.size();
+        }
+
+        Serial.printf("No file open. Could not check size");
+        return 0;
+}
+
+size_t SDCard::file_readChunk(uint8_t* buffer) {
+        if (status != Status::READING)
+        {
+                Serial.printf("Error reading chunk from %s. ", set->current);
+                Serial.println("SD not in READING mode");
+                status = Status::IDLE;
+                return 0;
+        }
+
+        size_t newBytesRead = file.read(buffer, FILE_CHUNK_SIZE);
+        if (newBytesRead == 0)
+        {
+                Serial.println("Read chunk failed");
+                file_close();
+                return 0;
+        }
+        bytesRead += newBytesRead;
+
+        return newBytesRead;
+}
+
+bool SDCard::file_EOF() {
+        if (status != Status::READING)
+        {
+                Serial.println("EOF check failed. No file open to read");
+                return false;
+        }
+
+        return bytesRead >= file.size();
+}
+
+/******************************************************************************/
+
+void SDCard::file_close() {
+        file.close();
+        bytesRead = 0;
         status = Status::IDLE;
 }
+
 
 bool SDCard::file_rename(const char* oldName, const char* newName) {
         // Backup file won't exist on the first rotation. That's okay
@@ -150,19 +276,26 @@ bool SDCard::file_delete(const char* fileName) {
         return false;
 }
 
+
 bool SDCard::file_rotate() {
-        if (!file_delete(BACKUP_FILE))
+        char current_[Paths::PATH_BUFFER_SIZE] = {0};
+        char backup_[Paths::PATH_BUFFER_SIZE] = {0};
+
+        if (!buildPath(current_, set->dir, set->current)) return false;
+        if (!buildPath(backup_, set->dir, set->backup)) return false;
+        
+        if (!file_delete(backup_))
         {
                 Serial.println("Failed to delete old backup");
                 return false;
         }
 
-        if (!file_rename(TEST_FILE, BACKUP_FILE))
+        if (!file_rename(current_, backup_))
         {
                 Serial.println("Failed to rename existing file");
                 return false;
         }
 
-        Serial.printf("Renamed %s to %s\n", TEST_FILE, BACKUP_FILE);
+        Serial.printf("Renamed %s to %s\n", current_, backup_);
         return true;
 }

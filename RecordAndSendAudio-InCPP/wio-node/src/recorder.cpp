@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
 #include "systemObjects.h"
+#include "paths.h"
 #include "recorder.h"
 
 namespace {
@@ -48,7 +49,7 @@ void Recorder::update_recording() {
             !System::sdCard.file_appendln((const int)count))
         {
                 Serial.println("File append failed");
-                System::sdCard.file_finishWriting();
+                System::sdCard.file_close();
                 status = Status::IDLE;
                 return;
         }
@@ -58,8 +59,7 @@ void Recorder::update_recording() {
 }
 
 void Recorder::update_recordingDone() {
-        System::sdCard.file_finishWriting();
-        System::sdCard.file_printContents();
+        System::sdCard.file_close();
         
         if (!System::dispatcher.performImmediateAction(
                 Dispatcher::PATH_RECORDING_DONE)) return;
@@ -85,8 +85,8 @@ bool Recorder::startRecording() {
         }
         
         Serial.println("Recording started");
-        
-        if (!System::sdCard.file_create())
+
+        if (!System::sdCard.file_create(&Paths::recordings))
         {
                 status = Status::IDLE;
                 return false;

@@ -65,10 +65,10 @@ bool Dispatcher::performImmediateAction(const char* path) {
         }
 
         if (!selectAction(path)) return false;
-        if (!performAction()) return false;
+        bool actionSucceeded = performAction();
         
         pendingAction_ = Action::NONE;
-        return true;
+        return actionSucceeded;
 }
 
 bool Dispatcher::setPendingAction(const char* path) {

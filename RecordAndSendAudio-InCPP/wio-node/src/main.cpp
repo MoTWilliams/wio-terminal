@@ -4,7 +4,7 @@
 
 void setup() {
         Serial.begin(115200);
-        delay(10000);   // Necessary to see initialization in Serial log
+        delay(15000);   // Necessary to see initialization in Serial log
 
         Serial.println("Starting...");
 

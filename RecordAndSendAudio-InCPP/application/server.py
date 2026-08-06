@@ -23,7 +23,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get("Content-Length", 0))
         post_content = self.rfile.read(content_length).decode("utf-8")
         if post_content:
-            print(f"POST body: {post_content!r}")
+            print("POST body:")
+            print(f"{post_content!r}")
 
         match self.path:
             case "/recorder/done":

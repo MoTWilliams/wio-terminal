@@ -2,6 +2,7 @@
 #include <rpcWiFi.h>
 #include "systemObjects.h"
 #include "secrets.h"
+#include "paths.h"
 #include "HTTPClient.h"
 
 namespace {
@@ -20,11 +21,21 @@ bool HTTPClient::POST(const char *path) {
                 return false;
         }
 
-        snprintf(path_, PATH_BUFFER_SIZE, "%s", path);
-
         connection.setMethod("POST");
-        status = Status::CONNECTING;
 
+        snprintf(path_, ENDPOINT_BUFFER_SIZE, "%s", path);
+
+        // File should not be empty
+        if (!strcmp(path, Paths::ENDPOINT_FILE_SEND))
+        {
+                if (!System::sdCard.file_openToRead()) 
+                        { reset(); return false; }
+                
+                contentLength = System::sdCard.file_size();
+                if (contentLength == 0) { reset(); return false; }
+        }
+        
+        status = Status::CONNECTING;
         return true;
 }
 
@@ -43,8 +54,10 @@ void HTTPClient::update() {
                 case Status::IDLE: return;
                 case Status::CONNECTING:
                         update_connecting(); return;
-                case Status::SENDING:
-                        update_sending(); return;
+                case Status::SENDING_HEADERS:
+                        update_sendingHeaders(); return;
+                case Status::SENDING_BODY:
+                        update_sendingBody(); return;
                 case Status::WAITING_FOR_RESPONSE:
                         update_waitingForResponse(); return;
                 case Status::READING_RESPONSE_HEADER:
@@ -56,49 +69,95 @@ void HTTPClient::update() {
 }
 
 void HTTPClient::update_connecting() {
-        if (tries == 0 || 
-            (tries < MAX_TRIES && System::now - lastChecked >= RETRY_INTERVAL))
-        {
-                lastChecked = System::now;
-                if (!client.connect(Secrets::host(), Secrets::port())) tries++;
-                else { tries = 0; status = Status::SENDING; }
-                return;
-        }
+        if (tries != 0 &&
+            !(tries < MAX_TRIES && System::now - lastChecked >= RETRY_INTERVAL))
+                { reset(); return; }
 
-        // Failed too many times
-        reset();
+        lastChecked = System::now;
 
+        if (!client.connect(Secrets::host(), Secrets::port()))
+                { tries++; return; }
+        
         tries = 0;
-        status = Status::IDLE;
+        status = Status::SENDING_HEADERS;
 }
 
-// TODO: Split this state into headers and body, and handle nonempty POST
-void HTTPClient::update_sending() {
+void HTTPClient::update_sendingHeaders() {
         if (!System::connectionMonitor.checkConnection(client))
                 { reset(); return; }
 
         // Send POST /recording/stopped with no body
-        client.printf("%s %s HTTP/1.1\r\n",connection.method(), path_);
+        client.printf("%s %s HTTP/1.1\r\n", connection.method(), path_);
         client.printf("Host: %s\r\n", Secrets::host());
-        client.println("Content-Type: text/plain");
-        client.println("Content-Length: 0");
+
+        if (!strcmp(path_, Paths::ENDPOINT_FILE_SEND))
+                client.println("Content-Type: application/octet-stream");
+        else client.println("Content-Type: text/plain");
+        
+        client.printf("Content-Length: %d\r\n", contentLength);
         client.println("Connection: close");
 
         // End headers
         client.println();
 
-        // Sent. Ensure buffer is empty
+        // Move on to sending the body for non-empty POST requests
+        if (!strcmp(path_, Paths::ENDPOINT_FILE_SEND))
+        {
+                status = Status::SENDING_BODY;
+                return;
+        }
+
+        // Otherwise, clear the buffer and get ready to receive response
         lineBuffer.clear();
         responseWaitStarted = System::now;
         status = Status::WAITING_FOR_RESPONSE;
 }
 
-void HTTPClient::update_sendingHeaders() {
-
-}
-
 void HTTPClient::update_sendingBody() {
+        if (!System::connectionMonitor.checkConnection(client))
+                { reset(); return; }
 
+        // Body finished. Close the file and get ready to receive response
+        if (System::sdCard.file_EOF())
+        {
+                System::sdCard.file_close();
+                lineBuffer.clear();
+                responseWaitStarted = System::now;
+                status = Status::WAITING_FOR_RESPONSE;
+                return;
+        }
+
+        // Retrieve next chunk
+        uint8_t buffer[System::sdCard.FILE_CHUNK_SIZE] = {0};
+
+        size_t bytesRead = System::sdCard.file_readChunk(buffer);
+        if (bytesRead == 0)
+        {
+                System::sdCard.file_close();
+                reset();
+                return;
+        }
+
+        // Send the chunk. Write doesn't always send the full number of bytes,
+        // so continue until the whole chunk is sent
+        size_t bytesSent = 0;
+
+        while (bytesSent < bytesRead)
+        {
+                size_t sent = client.write(
+                        buffer + bytesSent, bytesRead - bytesSent
+                );
+
+                if (sent == 0)
+                {
+                        Serial.println("Send chunk (of chunk) failed");
+                        System::sdCard.file_close();
+                        reset();
+                        return;
+                }
+
+                bytesSent += sent;
+        }
 }
 
 void HTTPClient::update_waitingForResponse() {
@@ -153,7 +212,7 @@ void HTTPClient::update_readingResponseHeader() {
 
 void HTTPClient::update_readingResponseBody() {
         // If something breaks, I'll add a print statement here. For now, just
-        // discard the response body
+        // discard the response body. Reset on successful completion
         if (lineBuffer.length() >= bytesToRead)
         {
                 reset();
@@ -174,6 +233,10 @@ void HTTPClient::update_readingResponseBody() {
 
 void HTTPClient::reset() {
         connection.reset();
+
+        path_[0] = '\0';
+        tries = 0;
+        contentLength = 0;
         bytesToRead = 0;
 
         status = Status::IDLE;
