@@ -16,11 +16,16 @@ public:
         void file_selectSet(const FileSet* fileSet);
         bool file_create(const FileSet* fileSet);
 
-        bool file_append(const char* data);
-        bool file_append(const int data);
-        bool file_appendln(const char* data);
-        bool file_appendln(const int data);
-        bool file_appendln();
+        size_t file_append(const char* data);
+        size_t file_append(const int data);
+        size_t file_appendln(const char* data);
+        size_t file_appendln(const int data);
+        size_t file_appendln();
+        size_t file_write(const uint8_t* data, size_t length);
+        size_t file_write(const int16_t* data, size_t numSamples);
+        size_t file_write(const uint8_t data);
+        size_t file_write(const uint16_t data);
+        size_t file_write(const uint32_t data);
         
         bool file_openToRead();
 
@@ -43,6 +48,8 @@ private:
         const FileSet* set = nullptr;
         size_t bytesRead = 0;
         
+        bool beginAppend();
+
         bool file_rename(const char* oldName, const char* newName);
         bool file_delete(const char* fileName);
 

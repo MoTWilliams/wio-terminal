@@ -96,7 +96,8 @@ bool SDCard::file_create(const FileSet* fileSet) {
         return true;
 }
 
-bool SDCard::file_append(const char* data) {
+
+bool SDCard::beginAppend() {
         if (status != Status::WRITING)
         {
                 Serial.print("Error appending to file. ");
@@ -104,61 +105,60 @@ bool SDCard::file_append(const char* data) {
                 status = Status::IDLE;
                 return false;
         }
-
-        file.print(data);
         return true;
 }
 
-bool SDCard::file_append(const int data) {
-        if (status != Status::WRITING)
-        {
-                Serial.print("Error appending to file. ");
-                Serial.println("SD not in WRITING mode");
-                status = Status::IDLE;
-                return false;
-        }
-        
-        file.print(data);
-        return true;
+size_t SDCard::file_append(const char* data) {
+        if (!beginAppend()) return 0;
+        return file.print(data);
 }
 
-bool SDCard::file_appendln(const char* data) {
-        if (status != Status::WRITING)
-        {
-                Serial.print("Error appending to file. ");
-                Serial.println("SD not in WRITING mode");
-                status = Status::IDLE;
-                return false;
-        }
-        
-        file.println(data);
-        return true;
+size_t SDCard::file_append(const int data) {
+        if (!beginAppend()) return 0;
+        return file.print(data);
 }
 
-bool SDCard::file_appendln(const int data) {
-        if (status != Status::WRITING)
-        {
-                Serial.print("Error appending to file. ");
-                Serial.println("SD not in WRITING mode");
-                status = Status::IDLE;
-                return false;
-        }
-        
-        file.println(data);
-        return true;
+size_t SDCard::file_appendln(const char* data) {
+        if (!beginAppend()) return 0;
+        return file.println(data);
 }
 
-bool SDCard::file_appendln() {
-        if (status != Status::WRITING)
-        {
-                Serial.print("Error appending to file. ");
-                Serial.println("SD not in WRITING mode");
-                status = Status::IDLE;
-                return false;
-        }
-        
-        file.println();
-        return true;
+size_t SDCard::file_appendln(const int data) {
+        if (!beginAppend()) return 0;
+        return file.println(data);
+}
+
+size_t SDCard::file_appendln() {
+        if (!beginAppend()) return 0;
+        return file.println();
+}
+
+size_t SDCard::file_write(const uint8_t* data, size_t length) {
+        if (!beginAppend()) return 0;
+        return file.write(data, length);
+}
+
+size_t SDCard::file_write(const int16_t* data, size_t numSamples) {
+        return file_write(
+                reinterpret_cast<const uint8_t*>(data),
+                numSamples * sizeof(int16_t)
+        );
+}
+
+size_t SDCard::file_write(const uint8_t data) {
+        return file_write(&data, 1);
+}
+
+size_t SDCard::file_write(const uint16_t data) {
+        return file_write(
+                reinterpret_cast<const uint8_t*>(&data), sizeof(data)
+        );
+}
+
+size_t SDCard::file_write(const uint32_t data) {
+        return file_write(
+                reinterpret_cast<const uint8_t*>(&data), sizeof(data)
+        );
 }
 
 /****************************************************************************** 
